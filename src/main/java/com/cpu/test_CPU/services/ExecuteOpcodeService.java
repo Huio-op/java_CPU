@@ -86,36 +86,27 @@ public class ExecuteOpcodeService {
 
   public void doMov(String value, String registerCode) {
     final Registers register = this.getRegisterByCode(registerCode);
+    // Substring to remove de 0x in the start
+    final int intValue =  Integer.parseInt(value.substring(2), 16);
 
-    register.getStack().push(value);
+    register.getStack().push(String.valueOf(intValue));
   }
 
   public void doLoad(String memoryAddress, String registerCode, String[][] memoryRef) {
     final Registers register = getRegisterByCode(registerCode);
 
-    if (!memoryAddress.startsWith("@")) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses should start with '@'");
-    }
-    final String[] memoryAddresses = memoryAddress
-      .replace("@", "")
-      .split(",");
+    final int[] memoryAddresses = getAddressesFromHex(memoryAddress);
 
-    final String memoryValue = memoryRef[Integer.parseInt(memoryAddresses[0])][Integer.parseInt(memoryAddresses[1])];
+    final String memoryValue = memoryRef[memoryAddresses[0]][memoryAddresses[1]];
     register.getStack().push(memoryAddress);
   }
 
   public void doSave(String registerCode, String memoryAddress, String[][] memoryRef) {
     final Registers register = getRegisterByCode(registerCode);
 
-    if (!memoryAddress.startsWith("@")) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses should start with '@'");
-    }
-    final String[] memoryAddresses = memoryAddress
-      .replace("@", "")
-      .split(",");
+    final int[] memoryAddresses = getAddressesFromHex(memoryAddress);
 
-    memoryRef[Integer.parseInt(memoryAddresses[0])][Integer.parseInt(memoryAddresses[1])] = register.getStack().pop();
-    ;
+    memoryRef[memoryAddresses[0]][memoryAddresses[1]] = register.getStack().pop();
   }
 
   public void doOut(String var, StringBuilder response) {
@@ -130,6 +121,16 @@ public class ExecuteOpcodeService {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Register not found");
     }
     return registerOptional.get();
+  }
+
+  public int[] getAddressesFromHex(String hexAddress) {
+    final int[] addresses = new int[2];
+
+    final char[] chars = hexAddress.substring(2).toCharArray();
+    for (int i = 0; i < chars.length; i++) {
+      addresses[i] = Integer.valueOf(String.valueOf(chars[i]), 15);
+    }
+    return addresses;
   }
 
 }

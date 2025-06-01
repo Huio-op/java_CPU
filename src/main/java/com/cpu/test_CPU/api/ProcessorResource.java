@@ -73,8 +73,34 @@ public class ProcessorResource {
 
         } else if (arg.startsWith("@")) {
           // TODO format memory address
+          final String[] addresses = arg.replaceAll("@","")
+            .split(",");
+          if (addresses.length > 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses have only two coordinates");
+          }
+
+          final StringBuilder hexString = new StringBuilder()
+            .append("0x");
+
+          for (String s : addresses) {
+            final int address = Integer.parseInt(s);
+            if (address > 15) {
+              throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The memory only has 15 addresses!");
+            }
+            hexString.append(Integer.toHexString(address));
+          }
+
+          memory[memY][memX] = hexString.toString();
+          compiledCode.append(" ")
+            .append(hexString.toString());
+
         } else {
-          final String hexValue = Integer.toHexString(Integer.parseInt(arg));
+          String hexValue = Integer.toHexString(Integer.parseInt(arg));
+          if (hexValue.length() == 1) {
+            hexValue = "0x0" + hexValue;
+          } else {
+            hexValue = "0x" + hexValue;
+          }
           memory[memY][memX] = hexValue;
           compiledCode.append(" ")
             .append(hexValue);
