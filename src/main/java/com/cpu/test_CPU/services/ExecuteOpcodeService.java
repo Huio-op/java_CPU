@@ -13,20 +13,26 @@ import java.util.Optional;
 @Service
 public class ExecuteOpcodeService {
 
-  public void execute(Opcodes op, ArrayList<String> args, StringBuilder response) {
+  public void execute(Opcodes op, ArrayList<String> args, StringBuilder response, String[][] memoryRef) {
 
     switch (op) {
       case NOOP: {
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Opcode not implemented");
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "NOOP Opcode not implemented");
       }
       case MOV: {
         this.doMov(args.get(0), args.get(1));
         break;
       }
-      case LOAD:
-      case SAVE:
+      case LOAD: {
+        this.doLoad(args.get(0), args.get(1), memoryRef);
+        break;
+      }
+      case SAVE: {
+        this.doSave(args.get(0), args.get(1), memoryRef);
+        break;
+      }
       case INP: {
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Opcode not implemented");
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "INP Opcode not implemented");
       }
       case OUT: {
         this.doOut(args.get(0), response);
@@ -72,16 +78,44 @@ public class ExecuteOpcodeService {
 
       }
       default: {
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Opcode not implemented");
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
       }
     }
 
   }
 
-  public void doMov(String value , String registerCode) {
+  public void doMov(String value, String registerCode) {
     final Registers register = this.getRegisterByCode(registerCode);
 
     register.getStack().push(value);
+  }
+
+  public void doLoad(String memoryAddress, String registerCode, String[][] memoryRef) {
+    final Registers register = getRegisterByCode(registerCode);
+
+    if (!memoryAddress.startsWith("@")) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses should start with '@'");
+    }
+    final String[] memoryAddresses = memoryAddress
+      .replace("@", "")
+      .split(",");
+
+    final String memoryValue = memoryRef[Integer.parseInt(memoryAddresses[0])][Integer.parseInt(memoryAddresses[1])];
+    register.getStack().push(memoryAddress);
+  }
+
+  public void doSave(String registerCode, String memoryAddress, String[][] memoryRef) {
+    final Registers register = getRegisterByCode(registerCode);
+
+    if (!memoryAddress.startsWith("@")) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses should start with '@'");
+    }
+    final String[] memoryAddresses = memoryAddress
+      .replace("@", "")
+      .split(",");
+
+    memoryRef[Integer.parseInt(memoryAddresses[0])][Integer.parseInt(memoryAddresses[1])] = register.getStack().pop();
+    ;
   }
 
   public void doOut(String var, StringBuilder response) {

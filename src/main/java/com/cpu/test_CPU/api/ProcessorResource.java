@@ -26,7 +26,7 @@ public class ProcessorResource {
   }
 
   @PostMapping("/compile")
-  public String compileCode(@RequestBody ProcessRequest request) {
+  public ProcessResponse compileCode(@RequestBody ProcessRequest request) {
 
     final String[] commandsByLine = request.sourceCode().split("\n");
     final StringBuilder compiledCode = new StringBuilder();
@@ -71,10 +71,13 @@ public class ProcessorResource {
           compiledCode.append(" ")
             .append(register.getHexCode());
 
+        } else if (arg.startsWith("@")) {
+          // TODO format memory address
         } else {
-          memory[memY][memX] = arg;
+          final String hexValue = Integer.toHexString(Integer.parseInt(arg));
+          memory[memY][memX] = hexValue;
           compiledCode.append(" ")
-            .append(arg);
+            .append(hexValue);
         }
         memX++;
       }
@@ -82,11 +85,11 @@ public class ProcessorResource {
       // Process each command
     }
 
-    return compiledCode.append("\n\n-- END --").toString();
+    return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory);
   }
 
   @GetMapping("/execute")
-  public String executeCode() {
+  public ProcessResponse executeCode() {
 
     int i = 0;
     int j = 0;
@@ -122,7 +125,7 @@ public class ProcessorResource {
           }
         }
 
-        executeOpcodeService.execute(opcode, args, response);
+        executeOpcodeService.execute(opcode, args, response, memory);
 
         if (j + opcode.getExpectedArgs() > memory[i].length) {
 
@@ -138,7 +141,7 @@ public class ProcessorResource {
       }
     }
 
-    return response.toString();
+    return new ProcessResponse(response.toString(), memory);
   }
 
   public String buildMemoryString() {
@@ -155,6 +158,10 @@ public class ProcessorResource {
   }
 
   public record ProcessRequest(String sourceCode) {
+  }
+
+  public record ProcessResponse(String data, String[][] memoryState) {
+
   }
 
 }

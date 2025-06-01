@@ -16,5 +16,34 @@ body {
 }
 
 .inline-form .form-half-field textarea {
-    height: 500px;
+    height: 350px;
+}
+
+.memoryTableWrapper {
+    margin-top: 10px;
+}
+
+table {
+    margin-top: 10px;
+    width: 100%;
+}
+
+table, th, td {
+    border: 1px solid black;
+    border-width: 1px !important;
+}
+
+th,
+td {
+    padding: 5px;
+}
+
+table th,
+table td:first-child {
+    text-align: center;
+    font-weight: bold;
+}
+
+table td {
+    text-align: end;
 }

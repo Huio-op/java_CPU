@@ -13,8 +13,9 @@ function compileCode() {
         }),
         success: (data, status) => {
             $('#compiledCodeOutput')
-                .val(data)
+                .val(data.data)
                 .trigger('change');
+            applyMemoryState(data.memoryState);
         },
         error: (error, type) => {
             console.error("error:", error);
@@ -24,7 +25,7 @@ function compileCode() {
 }
 
 $(document).ready(() => {
-    $('#compiledCodeOutput').change( function (event) {
+    $('#compiledCodeOutput').change(function (event) {
         if (event.target.value) {
             $('#executeCodeBtn')[0].disabled = false;
         }
@@ -40,11 +41,21 @@ function executeCode() {
         context: document.body,
         contentType: 'application/json',
         success: (data, status) => {
-            $('#outputField').val(data)
+            $('#outputField').val(data.data)
+            applyMemoryState(data.memoryState);
         },
         error: (error, type) => {
             console.error("error:", error);
             alert(`Error: ${error.responseJSON?.message ?? type}`);
         }
+    })
+}
+
+function applyMemoryState(memoryState) {
+    memoryState.forEach((row, rowIdx) => {
+        row.forEach((col, colIdx) => {
+            const memoryRef = $(`#table-row-${rowIdx}-col-${colIdx}`);
+            memoryRef.empty().append(col ?? '0000')
+        })
     })
 }
