@@ -8,6 +8,18 @@ public enum Opcodes {
   SAVE("0x03", 2),
   INP("0x04", 1),
   OUT("0x05", 1),
+  ADD("0x06", 2),
+  SUB("0x07", 2),
+  MUL("0x08", 2),
+  DIV("0x09", 2),
+  JGT("0x0A", 3),
+  JLT("0x0B", 3),
+  JGE("0x0C", 3),
+  JLE("0x0D", 3),
+  JEQ("0x0E", 3),
+  JMP("0x0F", 1),
+  CPY("0x10", 2),
+  DEF("0x11", 1),
   HALT("0xFF", 0);
 
   private String hexCode;

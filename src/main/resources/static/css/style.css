@@ -1,0 +1,20 @@
+body {
+    padding: 20px;
+}
+
+.inline-form {
+    display: inline-flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.inline-form .form-half-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 50%;
+}
+
+.inline-form .form-half-field textarea {
+    height: 500px;
+}

@@ -32,6 +32,45 @@ public class ExecuteOpcodeService {
         this.doOut(args.get(0), response);
         break;
       }
+      case ADD: {
+
+      }
+      case SUB: {
+
+      }
+      case MUL: {
+
+      }
+      case DIV: {
+
+      }
+      case JGT: {
+
+      }
+      case JLT: {
+
+      }
+      case JGE: {
+
+      }
+      case JLE: {
+
+      }
+      case JEQ: {
+
+      }
+      case JMP: {
+
+      }
+      case CPY: {
+
+      }
+      case DEF: {
+
+      }
+      case HALT: {
+
+      }
       default: {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Opcode not implemented");
       }

@@ -28,17 +28,19 @@ public class ProcessorResource {
   @PostMapping("/compile")
   public String compileCode(@RequestBody ProcessRequest request) {
 
-    final String[] commandsByLine = request.data().split("\n");
+    final String[] commandsByLine = request.sourceCode().split("\n");
+    final StringBuilder compiledCode = new StringBuilder();
+    compiledCode.append("-- BEGIN --\n");
 
     int memY = 0;
     int memX = 0;
-    for(String command : commandsByLine) {
+    for (String command : commandsByLine) {
 
       final String[] args = command.split(" ");
       final String func = args[0];
       final Opcodes opcode = Opcodes.valueOf(func);
 
-      if (args.length -1 != opcode.getExpectedArgs()) {
+      if (args.length - 1 != opcode.getExpectedArgs()) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong number of arguments, expected " + opcode.getExpectedArgs() + ", got " + args.length);
       }
 
@@ -54,7 +56,10 @@ public class ProcessorResource {
 
         final Optional<Opcodes> funcName = Arrays.stream(Opcodes.values()).filter(o -> o.name().equals(arg)).findFirst();
         if (funcName.isPresent()) {
-          memory[memY][memX] = funcName.get().getHexCode();
+          final Opcodes function = funcName.get();
+          memory[memY][memX] = function.getHexCode();
+          compiledCode.append("\n");
+          compiledCode.append(function.getHexCode());
         } else if (arg.startsWith("R")) {
 
           final Optional<Registers> registerOptional = Arrays.stream(Registers.values()).filter(r -> r.name().equals(arg)).findFirst();
@@ -63,9 +68,13 @@ public class ProcessorResource {
           }
           final Registers register = registerOptional.get();
           memory[memY][memX] = register.getHexCode();
+          compiledCode.append(" ")
+            .append(register.getHexCode());
 
         } else {
           memory[memY][memX] = arg;
+          compiledCode.append(" ")
+            .append(arg);
         }
         memX++;
       }
@@ -73,7 +82,7 @@ public class ProcessorResource {
       // Process each command
     }
 
-    return buildMemoryString();
+    return compiledCode.append("\n\n-- END --").toString();
   }
 
   @GetMapping("/execute")
@@ -106,8 +115,8 @@ public class ProcessorResource {
         final ArrayList<String> args = new ArrayList<>();
 
         for (int k = 1; k <= opcode.getExpectedArgs(); k++) {
-          if (j+k > memory[i].length) {
-            args.add(memory[i+1][(j + k - (memory[i].length) - 1)]);
+          if (j + k > memory[i].length) {
+            args.add(memory[i + 1][(j + k - (memory[i].length) - 1)]);
           } else {
             args.add(memory[i][j + k]);
           }
@@ -145,7 +154,7 @@ public class ProcessorResource {
     return out.toString();
   }
 
-  public record ProcessRequest(String data) {
+  public record ProcessRequest(String sourceCode) {
   }
 
 }
