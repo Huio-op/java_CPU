@@ -20,6 +20,7 @@ public enum Opcodes {
   JMP("0x0F", 1),
   CPY("0x10", 2),
   DEF("0x11", 1),
+  RET("0x12", 0),
   HALT("0xFF", 0);
 
   private String hexCode;

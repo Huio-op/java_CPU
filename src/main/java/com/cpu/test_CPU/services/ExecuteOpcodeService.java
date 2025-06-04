@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 @Service
 public class ExecuteOpcodeService {
@@ -78,6 +77,10 @@ public class ExecuteOpcodeService {
 
       }
       case DEF: {
+        this.doDef(args.get(0));
+        break;
+      }
+      case RET: {
 
       }
       case HALT: {
@@ -90,7 +93,7 @@ public class ExecuteOpcodeService {
 
   }
 
-  public void doMov(String value, String registerCode) {
+  private void doMov(String value, String registerCode) {
     final Registers register = this.getRegisterByCode(registerCode);
     // Substring to remove de 0x in the start
     final int intValue = value.startsWith("0x")
@@ -100,7 +103,7 @@ public class ExecuteOpcodeService {
     register.getStack().push(String.valueOf(intValue));
   }
 
-  public void doLoad(String memoryAddress, String registerCode, String[][] memoryRef) {
+  private void doLoad(String memoryAddress, String registerCode, String[][] memoryRef) {
     final Registers register = getRegisterByCode(registerCode);
 
     final int[] memoryAddresses = getAddressesFromHex(memoryAddress);
@@ -109,7 +112,7 @@ public class ExecuteOpcodeService {
     register.getStack().push(memoryValue);
   }
 
-  public void doSave(String registerCode, String memoryAddress, String[][] memoryRef) {
+  private void doSave(String registerCode, String memoryAddress, String[][] memoryRef) {
     final Registers register = getRegisterByCode(registerCode);
 
     final int[] memoryAddresses = getAddressesFromHex(memoryAddress);
@@ -117,30 +120,34 @@ public class ExecuteOpcodeService {
     memoryRef[memoryAddresses[0]][memoryAddresses[1]] = register.getStack().pop();
   }
 
-  public void doOut(String var, StringBuilder response) {
+  private void doOut(String var, StringBuilder response) {
     final Registers register = getRegisterByCode(var);
     response.append(register.getStack().pop());
     response.append("\n");
   }
 
-  public void doAdd(String registerCode1, String registerCode2) {
+  private void doAdd(String registerCode1, String registerCode2) {
     this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 + int2));
   }
 
-  public void doSub(String registerCode1, String registerCode2) {
+  private void doSub(String registerCode1, String registerCode2) {
     this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 - int2));
   }
 
-  public void doMul(String registerCode1, String registerCode2) {
+  private void doMul(String registerCode1, String registerCode2) {
     this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 * int2));
   }
 
-  public void doDiv(String registerCode1, String registerCode2) {
+  private void doDiv(String registerCode1, String registerCode2) {
     // TODO: Doesnt work with decimal numbers
     this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 / int2));
   }
 
-  public Registers getRegisterByCode(String registerCode) {
+  private void doDef(String funcName) {
+
+  }
+
+  private Registers getRegisterByCode(String registerCode) {
     final Optional<Registers> registerOptional = Arrays.stream(Registers.values()).filter(reg -> reg.getHexCode().equals(registerCode)).findFirst();
     if (registerOptional.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Register not found");
@@ -148,7 +155,7 @@ public class ExecuteOpcodeService {
     return registerOptional.get();
   }
 
-  public int[] getAddressesFromHex(String hexAddress) {
+  private int[] getAddressesFromHex(String hexAddress) {
     final int[] addresses = new int[2];
 
     final char[] chars = hexAddress.substring(2).toCharArray();

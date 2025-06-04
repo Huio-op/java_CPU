@@ -31,12 +31,26 @@ $(document).ready(() => {
         }
     });
 
+    $.ajax({
+        type: 'get',
+        url: 'api/processor/state',
+        context: document.body,
+        contentType: 'application/json',
+        success: (data, status) => {
+            $('#compiledCodeOutput').val(data.data)
+            applyMemoryState(data.memoryState);
+        },
+        error: (error, type) => {
+            console.error("error:", error);
+            alert(`Error: ${error.responseJSON?.message ?? type}`);
+        }
+    })
 })
 
 function executeCode() {
 
     $.ajax({
-        type: 'get',
+        type: 'post',
         url: 'api/processor/execute',
         context: document.body,
         contentType: 'application/json',

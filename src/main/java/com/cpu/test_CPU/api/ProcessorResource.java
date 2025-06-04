@@ -1,5 +1,6 @@
 package com.cpu.test_CPU.api;
 
+import com.cpu.test_CPU.model.JumpPoint;
 import com.cpu.test_CPU.model.Opcodes;
 import com.cpu.test_CPU.model.Registers;
 import com.cpu.test_CPU.services.ExecuteOpcodeService;
@@ -9,6 +10,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -18,6 +21,8 @@ public class ProcessorResource {
   final String[][] memory = new String[16][16];
   final int romOffset = 8; // Primeiro oito linhas da memória é a ROM para guardar o código compilado
   // O resto da memória é o que pode ser utilizado pelo usuário
+  String compiledCode = null;
+  final Map<String, JumpPoint> jumpMap = new HashMap<>();
 
   private final ExecuteOpcodeService executeOpcodeService;
 
@@ -27,6 +32,8 @@ public class ProcessorResource {
 
   @PostMapping("/compile")
   public ProcessResponse compileCode(@RequestBody ProcessRequest request) {
+    // Clear jump map
+    this.jumpMap.clear();
 
     final String[] commandsByLine = request.sourceCode().split("\n");
     final StringBuilder compiledCode = new StringBuilder();
@@ -34,7 +41,13 @@ public class ProcessorResource {
 
     int memY = 0;
     int memX = 0;
+    boolean insideDef = false;
     for (String command : commandsByLine) {
+
+      command = command.trim();
+      if (command.isBlank()) {
+        continue;
+      }
 
       final String[] args = command.split(" ");
       final String func = args[0];
@@ -60,6 +73,23 @@ public class ProcessorResource {
           memory[memY][memX] = function.getHexCode();
           compiledCode.append("\n");
           compiledCode.append(function.getHexCode());
+
+          if (function.equals(Opcodes.DEF)) {
+            if (insideDef) {
+              throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot define jump point inside a jump point");
+            }
+
+            insideDef = true;
+          } else if (function.equals(Opcodes.RET)) {
+            insideDef = false;
+          }
+        } else if (opcode.equals(Opcodes.DEF)) {
+
+          String hexValue = this.getHexString(jumpMap.size());
+          jumpMap.put(hexValue, new JumpPoint(memY, memX, arg));
+          memory[memY][memX] = hexValue;
+          compiledCode.append(" ").append(hexValue);
+
         } else if (arg.startsWith("R")) {
 
           final Optional<Registers> registerOptional = Arrays.stream(Registers.values()).filter(r -> r.name().equals(arg)).findFirst();
@@ -95,26 +125,23 @@ public class ProcessorResource {
             .append(hexString.toString());
 
         } else {
-          String hexValue = Integer.toHexString(Integer.parseInt(arg));
-          if (hexValue.length() == 1) {
-            hexValue = "0x0" + hexValue;
-          } else {
-            hexValue = "0x" + hexValue;
-          }
+          String hexValue = this.getHexString(Integer.parseInt(arg));
+
           memory[memY][memX] = hexValue;
           compiledCode.append(" ")
             .append(hexValue);
         }
         memX++;
       }
-
-      // Process each command
+    }
+    if (insideDef) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "DEF not closed!");
     }
 
     return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory);
   }
 
-  @GetMapping("/execute")
+  @PostMapping("/execute")
   public ProcessResponse executeCode() {
 
     int i = 0;
@@ -167,7 +194,13 @@ public class ProcessorResource {
       }
     }
 
-    return new ProcessResponse(response.toString(), memory);
+    this.compiledCode = response.toString();
+    return new ProcessResponse(this.compiledCode, memory);
+  }
+
+  @GetMapping("/state")
+  public ProcessResponse getCurrentState() {
+    return new ProcessResponse(this.compiledCode, memory);
   }
 
   public String buildMemoryString() {
@@ -181,6 +214,16 @@ public class ProcessorResource {
       out.append("\n");
     }
     return out.toString();
+  }
+
+  private String getHexString(int integer) {
+    String hexValue = Integer.toHexString(integer);
+    if (hexValue.length() == 1) {
+      hexValue = "0x0" + hexValue;
+    } else {
+      hexValue = "0x" + hexValue;
+    }
+    return hexValue;
   }
 
   public record ProcessRequest(String sourceCode) {
