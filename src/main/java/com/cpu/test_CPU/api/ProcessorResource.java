@@ -8,11 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/processor")
@@ -42,6 +38,8 @@ public class ProcessorResource {
     int memY = 0;
     int memX = 0;
     boolean insideDef = false;
+    final ArrayList<JumpPlaceholder> jumpsDeclared = new ArrayList<>();
+
     for (String command : commandsByLine) {
 
       command = command.trim();
@@ -103,7 +101,7 @@ public class ProcessorResource {
 
         } else if (arg.startsWith("@")) {
           // TODO format memory address
-          final String[] addresses = arg.replaceAll("@","")
+          final String[] addresses = arg.replaceAll("@", "")
             .split(",");
           if (addresses.length > 2) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses have only two coordinates");
@@ -124,6 +122,14 @@ public class ProcessorResource {
           compiledCode.append(" ")
             .append(hexString.toString());
 
+        } else if (this.isJumpOpcode(opcode)) {
+
+          final String placeholderText = "${" + jumpsDeclared.size() + "}";
+          final JumpPlaceholder placeholder = new JumpPlaceholder(memY, memX, placeholderText, arg);
+          jumpsDeclared.add(placeholder);
+          compiledCode.append(" ")
+            .append(placeholderText);
+
         } else {
           String hexValue = this.getHexString(Integer.parseInt(arg));
 
@@ -136,6 +142,21 @@ public class ProcessorResource {
     }
     if (insideDef) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "DEF not closed!");
+    }
+
+    for (JumpPlaceholder jumpPlaceholder : jumpsDeclared) {
+      final Optional<Map.Entry<String, JumpPoint>> jumpPointOptional = jumpMap.entrySet().stream().filter((entry) ->
+        entry.getValue().name().equals(jumpPlaceholder.originalName())
+      ).findFirst();
+
+      if (jumpPointOptional.isEmpty()) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Jump point not defined!");
+      }
+
+      final String jumpPointKey = jumpPointOptional.get().getKey();
+      memory[jumpPlaceholder.memY()][jumpPlaceholder.memX()] = jumpPointKey;
+      final int indexToReplace = compiledCode.indexOf(jumpPlaceholder.placeholderTxt());
+      compiledCode.replace(indexToReplace, indexToReplace + jumpPlaceholder.placeholderTxt().length(), jumpPointKey);
     }
 
     return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory);
@@ -226,11 +247,20 @@ public class ProcessorResource {
     return hexValue;
   }
 
+  private boolean isJumpOpcode(Opcodes opcode) {
+    return switch (opcode) {
+      case JEQ, JLE, JGT, JGE, JLT, JMP -> true;
+      default -> false;
+    };
+  }
+
   public record ProcessRequest(String sourceCode) {
   }
 
   public record ProcessResponse(String data, String[][] memoryState) {
+  }
 
+  public record JumpPlaceholder(int memY, int memX, String placeholderTxt, String originalName) {
   }
 
 }
