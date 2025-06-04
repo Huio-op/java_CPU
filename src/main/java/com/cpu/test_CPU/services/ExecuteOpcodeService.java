@@ -16,8 +16,14 @@ import java.util.function.BiFunction;
 @Service
 public class ExecuteOpcodeService {
 
-  public void execute(Opcodes op, ArrayList<String> args, StringBuilder response, String[][] memoryRef, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction, JumpPoint currentReturnPoint) {
-
+  public void execute(Opcodes op,
+                      ArrayList<String> args,
+                      StringBuilder response,
+                      String[][] memoryRef,
+                      Map<String, JumpPoint> jumpMap,
+                      BiFunction<Integer, Integer, Void> jumpFunction,
+                      JumpPoint currentReturnPoint
+  ) {
     switch (op) {
       case NOOP: {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "NOOP Opcode not implemented");
@@ -70,14 +76,14 @@ public class ExecuteOpcodeService {
 
       }
       case JEQ: {
-
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
       }
       case JMP: {
         this.doJmp(args.get(0), jumpMap, jumpFunction);
         break;
       }
       case CPY: {
-
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
       }
       case DEF: {
         // Don't need to do anything when defining function
