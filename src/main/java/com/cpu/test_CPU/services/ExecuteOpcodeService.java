@@ -94,7 +94,6 @@ public class ExecuteOpcodeService {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
       }
     }
-
   }
 
   private void doMov(String value, String registerCode) {
@@ -197,5 +196,4 @@ public class ExecuteOpcodeService {
     }
 
   }
-
 }
