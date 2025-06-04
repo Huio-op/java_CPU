@@ -98,7 +98,7 @@ public class ExecuteOpcodeService {
     final int[] memoryAddresses = getAddressesFromHex(memoryAddress);
 
     final String memoryValue = memoryRef[memoryAddresses[0]][memoryAddresses[1]];
-    register.getStack().push(memoryAddress);
+    register.getStack().push(memoryValue);
   }
 
   public void doSave(String registerCode, String memoryAddress, String[][] memoryRef) {

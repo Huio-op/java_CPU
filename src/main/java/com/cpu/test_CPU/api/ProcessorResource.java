@@ -144,8 +144,8 @@ public class ProcessorResource {
         final ArrayList<String> args = new ArrayList<>();
 
         for (int k = 1; k <= opcode.getExpectedArgs(); k++) {
-          if (j + k > memory[i].length) {
-            args.add(memory[i + 1][(j + k - (memory[i].length) - 1)]);
+          if (j + k >= memory[i].length) {
+            args.add(memory[i + 1][(j + k - (memory[i].length))]);
           } else {
             args.add(memory[i][j + k]);
           }
@@ -153,14 +153,14 @@ public class ProcessorResource {
 
         executeOpcodeService.execute(opcode, args, response, memory);
 
-        if (j + opcode.getExpectedArgs() > memory[i].length) {
+        if (j + opcode.getExpectedArgs() + 1 >= memory[i].length) {
 
           if (i + 1 >= memory.length) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ROM memory Overflow");
           }
 
           i++;
-          j = j + opcode.getExpectedArgs() - memory[i].length - 1;
+          j = j + opcode.getExpectedArgs() - (memory[i].length - 1);
         } else {
           j += opcode.getExpectedArgs() + 1;
         }
