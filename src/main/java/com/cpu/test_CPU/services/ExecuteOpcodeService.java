@@ -88,7 +88,7 @@ public class ExecuteOpcodeService {
         break;
       }
       case HALT: {
-        // Don't need to do anything when defining function
+        // Don't need to do anything when halting
         break;
       }
       default: {
