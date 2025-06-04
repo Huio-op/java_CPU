@@ -9,6 +9,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 @Service
 public class ExecuteOpcodeService {
@@ -39,16 +41,20 @@ public class ExecuteOpcodeService {
         break;
       }
       case ADD: {
-
+        this.doAdd(args.get(0), args.get(1));
+        break;
       }
       case SUB: {
-
+        this.doSub(args.get(0), args.get(1));
+        break;
       }
       case MUL: {
-
+        this.doMul(args.get(0), args.get(1));
+        break;
       }
       case DIV: {
-
+        this.doDiv(args.get(0), args.get(1));
+        break;
       }
       case JGT: {
 
@@ -87,7 +93,9 @@ public class ExecuteOpcodeService {
   public void doMov(String value, String registerCode) {
     final Registers register = this.getRegisterByCode(registerCode);
     // Substring to remove de 0x in the start
-    final int intValue =  Integer.parseInt(value.substring(2), 16);
+    final int intValue = value.startsWith("0x")
+      ? Integer.parseInt(value.substring(2), 16)
+      : Integer.parseInt(value);
 
     register.getStack().push(String.valueOf(intValue));
   }
@@ -115,6 +123,23 @@ public class ExecuteOpcodeService {
     response.append("\n");
   }
 
+  public void doAdd(String registerCode1, String registerCode2) {
+    this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 + int2));
+  }
+
+  public void doSub(String registerCode1, String registerCode2) {
+    this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 - int2));
+  }
+
+  public void doMul(String registerCode1, String registerCode2) {
+    this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 * int2));
+  }
+
+  public void doDiv(String registerCode1, String registerCode2) {
+    // TODO: Doesnt work with decimal numbers
+    this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 / int2));
+  }
+
   public Registers getRegisterByCode(String registerCode) {
     final Optional<Registers> registerOptional = Arrays.stream(Registers.values()).filter(reg -> reg.getHexCode().equals(registerCode)).findFirst();
     if (registerOptional.isEmpty()) {
@@ -131,6 +156,26 @@ public class ExecuteOpcodeService {
       addresses[i] = Integer.valueOf(String.valueOf(chars[i]), 15);
     }
     return addresses;
+  }
+
+  // Executes an operation on two registers
+  private void executeOperation(String registerCode1, String registerCode2, BiFunction<Integer, Integer, String> operation) {
+
+    final Registers register1 = getRegisterByCode(registerCode1);
+    final Registers register2 = getRegisterByCode(registerCode2);
+
+    final String regVal1 = register1.getStack().pop();
+    final String regVal2= register2.getStack().pop();
+    try {
+      final Integer intVal1 = Integer.parseInt(regVal1);
+      final Integer intVal2 = Integer.parseInt(regVal2);
+
+      final String result = operation.apply(intVal1, intVal2);
+      this.doMov(result, registerCode1);
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Value on register to add is not an integer!", e);
+    }
+
   }
 
 }
