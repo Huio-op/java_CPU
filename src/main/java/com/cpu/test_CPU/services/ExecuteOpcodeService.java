@@ -88,7 +88,8 @@ public class ExecuteOpcodeService {
         break;
       }
       case HALT: {
-
+        // Don't need to do anything when defining function
+        break;
       }
       default: {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
