@@ -8,7 +8,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 
 @RestController
 @RequestMapping("/api/processor")
@@ -165,12 +172,24 @@ public class ProcessorResource {
   @PostMapping("/execute")
   public ProcessResponse executeCode() {
 
-    int i = 0;
-    int j = 0;
+    final AtomicInteger memY = new AtomicInteger(0);
+    final AtomicInteger memX = new AtomicInteger(0);
     final StringBuilder response = new StringBuilder();
+    final AtomicReference<JumpPoint> currentReturnPoint = new AtomicReference<>();
+
+    final BiFunction<Integer, Integer, Void> executeJump = (newY, newX) -> {
+      if (currentReturnPoint.get() != null && newY.equals(currentReturnPoint.get().rowOrigin()) && newX.equals(currentReturnPoint.get().colOrigin())) {
+        currentReturnPoint.set(null);
+      } else {
+        currentReturnPoint.set(new JumpPoint(memY.get(), memX.get(), "RET"));
+      }
+      memY.set(newY);
+      memX.set(newX);
+      return null;
+    };
 
     while (true) {
-      final String funcCode = memory[i][j];
+      final String funcCode = memory[memY.get()][memX.get()];
 
       if (funcCode == null) {
         break;
@@ -192,25 +211,26 @@ public class ProcessorResource {
         final ArrayList<String> args = new ArrayList<>();
 
         for (int k = 1; k <= opcode.getExpectedArgs(); k++) {
-          if (j + k >= memory[i].length) {
-            args.add(memory[i + 1][(j + k - (memory[i].length))]);
+          if (memX.get() + k >= memory[memY.get()].length) {
+            args.add(memory[memY.get() + 1][(memX.get() + k - (memory[memY.get()].length))]);
           } else {
-            args.add(memory[i][j + k]);
+            args.add(memory[memY.get()][memX.get() + k]);
           }
         }
 
-        executeOpcodeService.execute(opcode, args, response, memory);
+        executeOpcodeService.execute(opcode, args, response, memory, jumpMap, executeJump, currentReturnPoint.get());
 
-        if (j + opcode.getExpectedArgs() + 1 >= memory[i].length) {
+        final int argsOffset = isJumpOpcode(opcode) ? 0 : opcode.equals(Opcodes.RET) ? 1 : opcode.getExpectedArgs();
+        if (memX.get() + argsOffset + 1 >= memory[memY.get()].length) {
 
-          if (i + 1 >= memory.length) {
+          if (memY.get() + 1 >= memory.length) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ROM memory Overflow");
           }
 
-          i++;
-          j = j + opcode.getExpectedArgs() - (memory[i].length - 1);
+          memY.set(memY.get() + 1);
+          memX.set(memX.get() + argsOffset - (memory[memY.get()].length - 1));
         } else {
-          j += opcode.getExpectedArgs() + 1;
+          memX.set(memX.get() + argsOffset + 1);
         }
       }
     }

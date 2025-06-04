@@ -1,5 +1,6 @@
 package com.cpu.test_CPU.services;
 
+import com.cpu.test_CPU.model.JumpPoint;
 import com.cpu.test_CPU.model.Opcodes;
 import com.cpu.test_CPU.model.Registers;
 import org.springframework.http.HttpStatus;
@@ -8,13 +9,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
 @Service
 public class ExecuteOpcodeService {
 
-  public void execute(Opcodes op, ArrayList<String> args, StringBuilder response, String[][] memoryRef) {
+  public void execute(Opcodes op, ArrayList<String> args, StringBuilder response, String[][] memoryRef, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction, JumpPoint currentReturnPoint) {
 
     switch (op) {
       case NOOP: {
@@ -71,17 +73,19 @@ public class ExecuteOpcodeService {
 
       }
       case JMP: {
-
+        this.doJmp(args.get(0), jumpMap, jumpFunction);
+        break;
       }
       case CPY: {
 
       }
       case DEF: {
-        this.doDef(args.get(0));
+        // Don't need to do anything when defining function
         break;
       }
       case RET: {
-
+        this.doRet(currentReturnPoint, jumpFunction);
+        break;
       }
       case HALT: {
 
@@ -143,8 +147,17 @@ public class ExecuteOpcodeService {
     this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 / int2));
   }
 
-  private void doDef(String funcName) {
+  private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+    final JumpPoint jumpPoint = jumpMap.get(jumpPointHex);
+    if (jumpPoint == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Jump point not found!");
+    }
 
+    jumpFunction.apply(jumpPoint.rowOrigin(), jumpPoint.colOrigin());
+  }
+
+  private void doRet(JumpPoint returnPoint, BiFunction<Integer, Integer, Void> jumpFunction) {
+    jumpFunction.apply(returnPoint.rowOrigin(), returnPoint.colOrigin());
   }
 
   private Registers getRegisterByCode(String registerCode) {
@@ -172,7 +185,7 @@ public class ExecuteOpcodeService {
     final Registers register2 = getRegisterByCode(registerCode2);
 
     final String regVal1 = register1.getStack().pop();
-    final String regVal2= register2.getStack().pop();
+    final String regVal2 = register2.getStack().pop();
     try {
       final Integer intVal1 = Integer.parseInt(regVal1);
       final Integer intVal2 = Integer.parseInt(regVal2);
