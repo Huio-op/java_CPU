@@ -67,13 +67,13 @@ public class ExecuteOpcodeService {
         return this.doJgt(args.get(0), args.get(1), args.get(2), jumpMap, jumpFunction);
       }
       case JLT: {
-
+        return this.doJlt(args.get(0), args.get(1), args.get(2), jumpMap, jumpFunction);
       }
       case JGE: {
-
+        return this.doJge(args.get(0), args.get(1), args.get(2), jumpMap, jumpFunction);
       }
       case JLE: {
-
+        return this.doJle(args.get(0), args.get(1), args.get(2), jumpMap, jumpFunction);
       }
       case JEQ: {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
@@ -156,6 +156,18 @@ public class ExecuteOpcodeService {
 
   private boolean doJgt(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
     return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 > int2);
+  }
+
+  private boolean doJlt(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+    return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 < int2);
+  }
+
+  private boolean doJge(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+    return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 >= int2);
+  }
+
+  private boolean doJle(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+    return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 <= int2);
   }
 
   private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
