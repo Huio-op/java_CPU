@@ -189,21 +189,11 @@ public class ProcessorResource {
     };
 
     while (true) {
-      final String funcCode = memory[memY.get()][memX.get()];
 
-      if (funcCode == null) {
+      final Opcodes opcode = this.getOpcodesInCursor(memY, memX);
+      if (opcode == null) {
         break;
       }
-
-      final Optional<Opcodes> funcOptional = Arrays.stream(Opcodes.values()).filter(opcode ->
-        opcode.getHexCode().equals(funcCode)
-      ).findFirst();
-
-      if (funcOptional.isEmpty()) {
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Function not found");
-      }
-
-      final Opcodes opcode = funcOptional.get();
 
       if (opcode.equals(Opcodes.HALT)) {
         break;
@@ -218,9 +208,19 @@ public class ProcessorResource {
           }
         }
 
-        executeOpcodeService.execute(opcode, args, response, memory, jumpMap, executeJump, currentReturnPoint.get());
+        final boolean executionResult = executeOpcodeService.execute(opcode, args, response, memory, jumpMap, executeJump, currentReturnPoint.get());
 
-        final int argsOffset = isJumpOpcode(opcode) ? 0 : opcode.equals(Opcodes.RET) ? 1 : opcode.getExpectedArgs();
+        int argsOffset = 0;
+        if (opcode.equals(Opcodes.RET) || isJumpOpcode(opcode)) {
+          final Opcodes jumpOpcode = this.getOpcodesInCursor(memY, memX);
+          if (jumpOpcode == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Original jump function not found");
+          }
+          argsOffset += !isJumpOpcode(opcode) || !executionResult ? jumpOpcode.getExpectedArgs() : 0;
+        } else {
+          argsOffset = opcode.getExpectedArgs();
+        }
+
         if (memX.get() + argsOffset + 1 >= memory[memY.get()].length) {
 
           if (memY.get() + 1 >= memory.length) {
@@ -272,6 +272,24 @@ public class ProcessorResource {
       case JEQ, JLE, JGT, JGE, JLT, JMP -> true;
       default -> false;
     };
+  }
+
+  private Opcodes getOpcodesInCursor(AtomicInteger memY, AtomicInteger memX) {
+    final String funcCode = memory[memY.get()][memX.get()];
+
+    if (funcCode == null) {
+      return null;
+    }
+
+    final Optional<Opcodes> funcOptional = Arrays.stream(Opcodes.values()).filter(opcode ->
+      opcode.getHexCode().equals(funcCode)
+    ).findFirst();
+
+    if (funcOptional.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Function not found");
+    }
+
+    return funcOptional.get();
   }
 
   public record ProcessRequest(String sourceCode) {

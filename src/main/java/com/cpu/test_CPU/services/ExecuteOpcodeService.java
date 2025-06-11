@@ -16,13 +16,13 @@ import java.util.function.BiFunction;
 @Service
 public class ExecuteOpcodeService {
 
-  public void execute(Opcodes op,
-                      ArrayList<String> args,
-                      StringBuilder response,
-                      String[][] memoryRef,
-                      Map<String, JumpPoint> jumpMap,
-                      BiFunction<Integer, Integer, Void> jumpFunction,
-                      JumpPoint currentReturnPoint
+  public boolean execute(Opcodes op,
+                         ArrayList<String> args,
+                         StringBuilder response,
+                         String[][] memoryRef,
+                         Map<String, JumpPoint> jumpMap,
+                         BiFunction<Integer, Integer, Void> jumpFunction,
+                         JumpPoint currentReturnPoint
   ) {
     switch (op) {
       case NOOP: {
@@ -64,7 +64,7 @@ public class ExecuteOpcodeService {
         break;
       }
       case JGT: {
-
+        return this.doJgt(args.get(0), args.get(1), args.get(2), jumpMap, jumpFunction);
       }
       case JLT: {
 
@@ -101,6 +101,7 @@ public class ExecuteOpcodeService {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
       }
     }
+    return true;
   }
 
   private void doMov(String value, String registerCode) {
@@ -153,13 +154,12 @@ public class ExecuteOpcodeService {
     this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 / int2));
   }
 
-  private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
-    final JumpPoint jumpPoint = jumpMap.get(jumpPointHex);
-    if (jumpPoint == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Jump point not found!");
-    }
+  private boolean doJgt(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+    return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 > int2);
+  }
 
-    jumpFunction.apply(jumpPoint.rowOrigin(), jumpPoint.colOrigin());
+  private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+    this.executeJump(jumpPointHex, jumpMap, jumpFunction);
   }
 
   private void doRet(JumpPoint returnPoint, BiFunction<Integer, Integer, Void> jumpFunction) {
@@ -201,6 +201,35 @@ public class ExecuteOpcodeService {
     } catch (NumberFormatException e) {
       throw new RuntimeException("Value on register to add is not an integer!", e);
     }
+  }
 
+  private void executeJump(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+    final JumpPoint jumpPoint = jumpMap.get(jumpPointHex);
+    if (jumpPoint == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Jump point not found!");
+    }
+
+    jumpFunction.apply(jumpPoint.rowOrigin(), jumpPoint.colOrigin());
+  }
+
+  private boolean executeComparison(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction, String registerCode1, String registerCode2, BiFunction<Integer, Integer, Boolean> comparison) {
+    final Registers register1 = getRegisterByCode(registerCode1);
+    final Registers register2 = getRegisterByCode(registerCode2);
+
+    final String regVal1 = register1.getStack().pop();
+    final String regVal2 = register2.getStack().pop();
+    try {
+      final Integer intVal1 = Integer.parseInt(regVal1);
+      final Integer intVal2 = Integer.parseInt(regVal2);
+
+      final boolean comparisonResult = comparison.apply(intVal1, intVal2);
+      if (comparisonResult) {
+        this.executeJump(jumpPointHex, jumpMap, jumpFunction);
+        return true;
+      }
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Value on register to add is not an integer!", e);
+    }
+    return false;
   }
 }
