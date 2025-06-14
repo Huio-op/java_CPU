@@ -80,7 +80,8 @@ public class ExecuteOpcodeService {
         break;
       }
       case CPY: {
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, op.name() + " Opcode not implemented");
+        this.doCpy(args.get(0), args.get(1));
+        break;
       }
       case DEF: {
         // Don't need to do anything when defining function
@@ -103,7 +104,7 @@ public class ExecuteOpcodeService {
 
   private void doMov(String value, String registerCode) {
     final Registers register = this.getRegisterByCode(registerCode);
-    // Substring to remove de 0x in the start
+    // Substring to remove the 0x at the start
     final int intValue = value.startsWith("0x")
       ? Integer.parseInt(value.substring(2), 16)
       : Integer.parseInt(value);
@@ -173,6 +174,10 @@ public class ExecuteOpcodeService {
 
   private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
     this.executeJump(jumpPointHex, jumpMap, jumpFunction);
+  }
+
+  private void doCpy(String registerCode1, String registerCode2) {
+    this.doMov(getRegisterByCode(registerCode1).getStack().peek(), registerCode2);
   }
 
   private void doRet(JumpPoint returnPoint, BiFunction<Integer, Integer, Void> jumpFunction) {

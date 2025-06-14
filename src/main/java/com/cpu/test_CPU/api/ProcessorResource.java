@@ -197,41 +197,41 @@ public class ProcessorResource {
 
       if (opcode.equals(Opcodes.HALT)) {
         break;
+      }
+
+      final ArrayList<String> args = new ArrayList<>();
+
+      for (int k = 1; k <= opcode.getExpectedArgs(); k++) {
+        if (memX.get() + k >= memory[memY.get()].length) {
+          args.add(memory[memY.get() + 1][(memX.get() + k - (memory[memY.get()].length))]);
+        } else {
+          args.add(memory[memY.get()][memX.get() + k]);
+        }
+      }
+
+      final boolean executionResult = executeOpcodeService.execute(opcode, args, response, memory, jumpMap, executeJump, currentReturnPoint.get());
+
+      int argsOffset = 0;
+      if (opcode.equals(Opcodes.RET) || isJumpOpcode(opcode)) {
+        final Opcodes jumpOpcode = this.getOpcodesInCursor(memY, memX);
+        if (jumpOpcode == null) {
+          throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Original jump function not found");
+        }
+        argsOffset += !isJumpOpcode(opcode) || !executionResult ? jumpOpcode.getExpectedArgs() : 0;
       } else {
-        final ArrayList<String> args = new ArrayList<>();
+        argsOffset = opcode.getExpectedArgs();
+      }
 
-        for (int k = 1; k <= opcode.getExpectedArgs(); k++) {
-          if (memX.get() + k >= memory[memY.get()].length) {
-            args.add(memory[memY.get() + 1][(memX.get() + k - (memory[memY.get()].length))]);
-          } else {
-            args.add(memory[memY.get()][memX.get() + k]);
-          }
+      if (memX.get() + argsOffset + 1 >= memory[memY.get()].length) {
+
+        if (memY.get() + 1 >= memory.length) {
+          throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ROM memory Overflow");
         }
 
-        final boolean executionResult = executeOpcodeService.execute(opcode, args, response, memory, jumpMap, executeJump, currentReturnPoint.get());
-
-        int argsOffset = 0;
-        if (opcode.equals(Opcodes.RET) || isJumpOpcode(opcode)) {
-          final Opcodes jumpOpcode = this.getOpcodesInCursor(memY, memX);
-          if (jumpOpcode == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Original jump function not found");
-          }
-          argsOffset += !isJumpOpcode(opcode) || !executionResult ? jumpOpcode.getExpectedArgs() : 0;
-        } else {
-          argsOffset = opcode.getExpectedArgs();
-        }
-
-        if (memX.get() + argsOffset + 1 >= memory[memY.get()].length) {
-
-          if (memY.get() + 1 >= memory.length) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ROM memory Overflow");
-          }
-
-          memY.set(memY.get() + 1);
-          memX.set(memX.get() + argsOffset - (memory[memY.get()].length - 1));
-        } else {
-          memX.set(memX.get() + argsOffset + 1);
-        }
+        memY.set(memY.get() + 1);
+        memX.set(memX.get() + argsOffset - (memory[memY.get()].length - 1));
+      } else {
+        memX.set(memX.get() + argsOffset + 1);
       }
     }
 
