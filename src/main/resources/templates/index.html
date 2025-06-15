@@ -14,28 +14,69 @@
 </head>
 <body>
 <div>
-    <div class="inline-form">
-        <div class="mb-3 form-half-field">
-            <label for="sourceCodeInput" class="form-label">Source code:</label>
-            <textarea class="form-control" id="sourceCodeInput" rows="3" name="sourceCode"></textarea>
-            <div class="col-auto">
-                <button class="btn btn-primary mb-3" onclick="compileCode()">Compilar</button>
+    <div class="top-row">
+        <!-- Source Code (Vermelho) -->
+        <div class="source-code-section">
+            <div class="form-field">
+                <label for="sourceCodeInput" class="form-label">Source code:</label>
+                <textarea class="form-control" id="sourceCodeInput" name="sourceCode" placeholder="Digite seu código aqui..."></textarea>
+                <div class="btn-container">
+                    <button class="btn btn-primary" onclick="compileCode()">Compilar</button>
+                </div>
             </div>
         </div>
-        <div class="mb-3 form-half-field">
-            <label for="compiledCodeOutput" class="form-label">Compiled code:</label>
-            <textarea class="form-control disabled" id="compiledCodeOutput" rows="3" name="compiledCode"
-                      disabled></textarea>
-            <div class="col-auto">
-                <button id="executeCodeBtn" disabled class="btn btn-primary mb-3" onclick="executeCode()">Execute
-                </button>
+
+        <!-- Compiled Code (Azul) -->
+        <div class="compiled-code-section">
+            <div class="form-field">
+                <label for="compiledCodeOutput" class="form-label">Compiled code:</label>
+                <textarea class="form-control" id="compiledCodeOutput" name="compiledCode" disabled></textarea>
+                <div class="btn-container">
+                    <button id="executeCodeBtn" disabled class="btn btn-primary" onclick="executeCode()">Execute</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registradores (Verde) -->
+        <div class="registers-section">
+            <div class="registers-container">
+                <div class="register-column">
+                    <div class="register-header">RA</div>
+                    <div class="register-values" id="register-RA">
+                        <!-- Valores serão preenchidos pelo JavaScript -->
+                    </div>
+                </div>
+
+                <div class="register-column">
+                    <div class="register-header">RB</div>
+                    <div class="register-values" id="register-RB">
+                        <!-- Valores serão preenchidos pelo JavaScript -->
+                    </div>
+                </div>
+
+                <div class="register-column">
+                    <div class="register-header">RC</div>
+                    <div class="register-values" id="register-RC">
+                        <!-- Valores serão preenchidos pelo JavaScript -->
+                    </div>
+                </div>
+
+                <div class="register-column">
+                    <div class="register-header">RD</div>
+                    <div class="register-values" id="register-RD">
+                        <!-- Valores serão preenchidos pelo JavaScript -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div>
-        <label for="outputField" class="form-label">Output:</label>
-        <textarea class="form-control" id="outputField" disabled rows="3" name="outputCode"></textarea>
+    <!-- Linha inferior: Output (Cinza) -->
+    <div class="bottom-row">
+        <div class="output-section">
+            <label for="outputField" class="form-label">Output:</label>
+            <textarea class="form-control" id="outputField" disabled name="outputCode"></textarea>
+        </div>
     </div>
 
     <div class="memoryTableWrapper">

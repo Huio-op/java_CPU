@@ -2,21 +2,132 @@ body {
     padding: 20px;
 }
 
-.inline-form {
-    display: inline-flex;
-    gap: 10px;
-    width: 100%;
+.top-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
 }
 
-.inline-form .form-half-field {
+.source-code-section {
+    flex: 1;
+    padding: 15px;
+}
+
+.compiled-code-section {
+    flex: 1;
+    padding: 15px;
+}
+
+.registers-section {
+    flex: 2;
+    padding: 15px;
+}
+
+.bottom-row {
+    display: flex;
+    gap: 20px;
+}
+
+.output-section {
+    flex: 1;
+    padding: 15px;
+}
+
+.form-field {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    width: 50%;
+    gap: 10px;
+    height: 100%;
 }
 
-.inline-form .form-half-field textarea {
-    height: 350px;
+.form-field textarea {
+    height: 300px;
+    resize: vertical;
+}
+
+.form-field label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.registers-container {
+    display: flex;
+    gap: 15px;
+    height: 100%;
+}
+
+.register-column {
+    flex: 1;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+}
+
+.register-header {
+    background-color: #6c757d;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 4px 4px 0 0;
+    font-size: 14px;
+}
+
+.register-values {
+    flex: 1;
+    max-height: 350px;
+    overflow-y: auto;
+    border-top: 1px solid #ccc;
+}
+
+.register-value {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e9ecef;
+    text-align: center;
+    font-family: monospace;
+    background-color: white;
+    font-size: 13px;
+}
+
+.register-value:last-child {
+    border-bottom: none;
+}
+
+.register-value:hover {
+    background-color: #e9ecef;
+}
+
+.register-values::-webkit-scrollbar {
+    width: 6px;
+}
+
+.register-values::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.register-values::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.register-values::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.btn-container {
+    margin-top: 10px;
+}
+
+.output-section textarea {
+    height: 150px;
+    resize: vertical;
+}
+
+.output-section label {
+    font-weight: bold;
+    margin-bottom: 10px;
 }
 
 .memoryTableWrapper {
@@ -33,8 +144,7 @@ table, th, td {
     border-width: 1px !important;
 }
 
-th,
-td {
+th, td {
     padding: 5px;
 }
 

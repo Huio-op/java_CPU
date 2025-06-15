@@ -10,6 +10,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 import java.util.function.BiFunction;
 
+import static com.cpu.test_CPU.model.Registers.getRegisterByCode;
+
 @Service
 public class ExecuteOpcodeService {
 
@@ -21,6 +23,7 @@ public class ExecuteOpcodeService {
                          BiFunction<Integer, Integer, Void> jumpFunction,
                          JumpPoint currentReturnPoint
   ) {
+
     switch (op) {
       case NOOP: {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "NOOP Opcode not implemented");
@@ -103,7 +106,7 @@ public class ExecuteOpcodeService {
   }
 
   private void doMov(String value, String registerCode) {
-    final Registers register = this.getRegisterByCode(registerCode);
+    final Registers register = getRegisterByCode(registerCode);
     // Substring to remove the 0x at the start
     final int intValue = value.startsWith("0x")
       ? Integer.parseInt(value.substring(2), 16)
@@ -184,13 +187,7 @@ public class ExecuteOpcodeService {
     jumpFunction.apply(returnPoint.rowOrigin(), returnPoint.colOrigin());
   }
 
-  private Registers getRegisterByCode(String registerCode) {
-    final Optional<Registers> registerOptional = Arrays.stream(Registers.values()).filter(reg -> reg.getHexCode().equals(registerCode)).findFirst();
-    if (registerOptional.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Register not found");
-    }
-    return registerOptional.get();
-  }
+
 
   private int[] getAddressesFromHex(String hexAddress) {
     final int[] addresses = new int[2];

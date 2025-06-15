@@ -1,5 +1,10 @@
 package com.cpu.test_CPU.model;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.Stack;
 
 public enum Registers {
@@ -31,5 +36,13 @@ public enum Registers {
 
   public void setStack(Stack<String> stack) {
     this.stack = stack;
+  }
+
+  public static Registers getRegisterByCode(String registerCode) {
+    final Optional<Registers> registerOptional = Arrays.stream(Registers.values()).filter(reg -> reg.getHexCode().equals(registerCode)).findFirst();
+    if (registerOptional.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Register not found");
+    }
+    return registerOptional.get();
   }
 }

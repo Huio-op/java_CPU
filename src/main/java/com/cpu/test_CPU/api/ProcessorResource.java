@@ -8,14 +8,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+
+import static com.cpu.test_CPU.model.Registers.getRegisterByCode;
 
 @RestController
 @RequestMapping("/api/processor")
@@ -46,6 +44,8 @@ public class ProcessorResource {
     int memX = 0;
     boolean insideDef = false;
     final ArrayList<JumpPlaceholder> jumpsDeclared = new ArrayList<>();
+
+    clearRegisterStacks();
 
     for (String command : commandsByLine) {
 
@@ -166,7 +166,7 @@ public class ProcessorResource {
       compiledCode.replace(indexToReplace, indexToReplace + jumpPlaceholder.placeholderTxt().length(), jumpPointKey);
     }
 
-    return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory);
+    return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory, getRegistersMap());
   }
 
   @PostMapping("/execute")
@@ -236,12 +236,12 @@ public class ProcessorResource {
     }
 
     this.compiledCode = response.toString();
-    return new ProcessResponse(this.compiledCode, memory);
+    return new ProcessResponse(this.compiledCode, memory, getRegistersMap());
   }
 
   @GetMapping("/state")
   public ProcessResponse getCurrentState() {
-    return new ProcessResponse(this.compiledCode, memory);
+    return new ProcessResponse(this.compiledCode, memory, getRegistersMap());
   }
 
   public String buildMemoryString() {
@@ -292,10 +292,42 @@ public class ProcessorResource {
     return funcOptional.get();
   }
 
+  private List<String> stackToList(Stack<String> stack) {
+    if (stack == null || stack.isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    List<String> list = new ArrayList<>();
+    Object[] stackArray = stack.toArray();
+
+    for (int i = stackArray.length - 1; i >= 0; i--) {
+      list.add((String) stackArray[i]);
+    }
+
+    return list;
+  }
+
+  private Map<String, List<String>> getRegistersMap() {
+    Map<String, List<String>> registers = new HashMap<>();
+
+    registers.put("RA", stackToList(getRegisterByCode(Registers.RA.getHexCode()).getStack()));
+    registers.put("RB", stackToList(getRegisterByCode(Registers.RB.getHexCode()).getStack()));
+    registers.put("RC", stackToList(getRegisterByCode(Registers.RC.getHexCode()).getStack()));
+    registers.put("RD", stackToList(getRegisterByCode(Registers.RD.getHexCode()).getStack()));
+
+    return registers;
+  }
+
+  private void clearRegisterStacks(){
+    getRegisterByCode(Registers.RA.getHexCode()).getStack().clear();
+    getRegisterByCode(Registers.RB.getHexCode()).getStack().clear();
+    getRegisterByCode(Registers.RC.getHexCode()).getStack().clear();
+    getRegisterByCode(Registers.RD.getHexCode()).getStack().clear();
+  }
   public record ProcessRequest(String sourceCode) {
   }
 
-  public record ProcessResponse(String data, String[][] memoryState) {
+  public record ProcessResponse(String data, String[][] memoryState, Map<String, List<String>> registers) {
   }
 
   public record JumpPlaceholder(int memY, int memX, String placeholderTxt, String originalName) {
