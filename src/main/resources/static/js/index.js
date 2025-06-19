@@ -35,6 +35,8 @@ $(document).ready(() => {
             $('#executeCodeBtn')[0].disabled = false;
         }
     });
+    $('#inputField')[0].disabled = true;
+    $('#sendInputBtn')[0].disabled = true;
 
     initializeEmptyRegisters();
 
@@ -44,7 +46,7 @@ $(document).ready(() => {
         context: document.body,
         contentType: 'application/json',
         success: (data, status) => {
-            $('#compiledCodeOutput').val(data.data);
+            $('#outputField').val(data.data);
             applyMemoryState(data.memoryState);
             // Atualiza os registradores com os dados recebidos
             if (data.registers) {
@@ -66,12 +68,7 @@ function executeCode() {
         context: document.body,
         contentType: 'application/json',
         success: (data, status) => {
-            $('#outputField').val(data.data);
-            applyMemoryState(data.memoryState);
-
-            if (data.registers) {
-                updateRegistersFromBackend(data.registers);
-            }
+            resolveResponse(data, status);
         },
         error: (error, type) => {
             console.error("error:", error);
@@ -109,7 +106,7 @@ function updateRegisters() {
             emptyDiv.className = 'register-value';
             emptyDiv.style.fontStyle = 'italic';
             emptyDiv.style.color = '#6c757d';
-            emptyDiv.textContent = 'Vazio';
+            emptyDiv.textContent = 'Empty';
             registerElement.appendChild(emptyDiv);
         } else {
             values.forEach(value => {
@@ -127,5 +124,47 @@ function updateRegistersFromBackend(registers) {
         // Atualiza a variável global com os dados recebidos
         registerData = { ...registers };
         updateRegisters();
+    }
+}
+
+function sendInput() {
+
+    const inputField = $('#inputField')[0];
+    const inputValue = inputField.value;
+
+    $.ajax({
+        type: 'post',
+        url: 'api/processor/input',
+        context: document.body,
+        contentType: 'application/json',
+        data: JSON.stringify({
+            sourceCode: inputValue,
+        }),
+        success: (data, status) => {
+            const inputField =$('#inputField');
+            inputField[0].disabled = true;
+            inputField.val('');
+            $('#sendInputBtn')[0].disabled = true;
+            resolveResponse(data, status);
+        },
+        error: (error, type) => {
+            console.error("error:", error);
+            alert(`Error: ${error.responseJSON?.message ?? type}`);
+        }
+    });
+}
+
+function resolveResponse(data, status) {
+    if (data.needsInput) {
+        alert("Necessário input do usuário")
+        $('#inputField')[0].disabled = false;
+        $('#sendInputBtn')[0].disabled = false;
+    } else {
+        $('#outputField').val(data.data);
+    }
+    applyMemoryState(data.memoryState);
+
+    if (data.registers) {
+        updateRegistersFromBackend(data.registers);
     }
 }

@@ -21,6 +21,7 @@ public enum Opcodes {
   CPY("0x10", 2),
   DEF("0x11", 1),
   RET("0x12", 0),
+  INP_C("0x13", 1),
   HALT("0xFF", 0);
 
   private String hexCode;

@@ -25,6 +25,10 @@ public class ProcessorResource {
   String compiledCode = null;
   final Map<String, JumpPoint> jumpMap = new HashMap<>();
 
+  final AtomicInteger executionMemY = new AtomicInteger(0);
+  final AtomicInteger executionMemX = new AtomicInteger(0);
+  StringBuilder executionResponse = new StringBuilder();
+
   private final ExecuteOpcodeService executeOpcodeService;
 
   public ProcessorResource(ExecuteOpcodeService executeOpcodeService) {
@@ -35,6 +39,7 @@ public class ProcessorResource {
   public ProcessResponse compileCode(@RequestBody ProcessRequest request) {
     // Clear jump map
     this.jumpMap.clear();
+    this.clearExecutionContext();
 
     final String[] commandsByLine = request.sourceCode().split("\n");
     final StringBuilder compiledCode = new StringBuilder();
@@ -166,31 +171,32 @@ public class ProcessorResource {
       compiledCode.replace(indexToReplace, indexToReplace + jumpPlaceholder.placeholderTxt().length(), jumpPointKey);
     }
 
-    return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory, getRegistersMap());
+    return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory, getRegistersMap(), false);
   }
 
   @PostMapping("/execute")
-  public ProcessResponse executeCode() {
+  public ProcessResponse executeCode(boolean continueExecutionContext, String input) {
 
-    final AtomicInteger memY = new AtomicInteger(0);
-    final AtomicInteger memX = new AtomicInteger(0);
-    final StringBuilder response = new StringBuilder();
+    if (!continueExecutionContext) {
+      this.clearExecutionContext();
+    }
+
     final AtomicReference<JumpPoint> currentReturnPoint = new AtomicReference<>();
 
     final BiFunction<Integer, Integer, Void> executeJump = (newY, newX) -> {
       if (currentReturnPoint.get() != null && newY.equals(currentReturnPoint.get().rowOrigin()) && newX.equals(currentReturnPoint.get().colOrigin())) {
         currentReturnPoint.set(null);
       } else {
-        currentReturnPoint.set(new JumpPoint(memY.get(), memX.get(), "RET"));
+        currentReturnPoint.set(new JumpPoint(executionMemY.get(), executionMemX.get(), "RET"));
       }
-      memY.set(newY);
-      memX.set(newX);
+      executionMemY.set(newY);
+      executionMemX.set(newX);
       return null;
     };
 
     while (true) {
 
-      final Opcodes opcode = this.getOpcodesInCursor(memY, memX);
+      final Opcodes opcode = this.getOpcodesInCursor(executionMemY, executionMemX);
       if (opcode == null) {
         break;
       }
@@ -199,21 +205,27 @@ public class ProcessorResource {
         break;
       }
 
+      if ((opcode.equals(Opcodes.INP) || opcode.equals(Opcodes.INP_C)) && !continueExecutionContext) {
+        return new ProcessResponse(null, memory, getRegistersMap(), true);
+      }
+
       final ArrayList<String> args = new ArrayList<>();
 
       for (int k = 1; k <= opcode.getExpectedArgs(); k++) {
-        if (memX.get() + k >= memory[memY.get()].length) {
-          args.add(memory[memY.get() + 1][(memX.get() + k - (memory[memY.get()].length))]);
+        if (executionMemX.get() + k >= memory[executionMemY.get()].length) {
+          args.add(memory[executionMemY.get() + 1][(executionMemX.get() + k - (memory[executionMemY.get()].length))]);
         } else {
-          args.add(memory[memY.get()][memX.get() + k]);
+          args.add(memory[executionMemY.get()][executionMemX.get() + k]);
         }
       }
 
-      final boolean executionResult = executeOpcodeService.execute(opcode, args, response, memory, jumpMap, executeJump, currentReturnPoint.get());
+      final boolean executionResult = executeOpcodeService.execute(opcode, args, executionResponse, memory, jumpMap, executeJump, currentReturnPoint.get(), input);
+
+      continueExecutionContext = false;
 
       int argsOffset = 0;
       if (opcode.equals(Opcodes.RET) || isJumpOpcode(opcode)) {
-        final Opcodes jumpOpcode = this.getOpcodesInCursor(memY, memX);
+        final Opcodes jumpOpcode = this.getOpcodesInCursor(executionMemY, executionMemX);
         if (jumpOpcode == null) {
           throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Original jump function not found");
         }
@@ -222,26 +234,32 @@ public class ProcessorResource {
         argsOffset = opcode.getExpectedArgs();
       }
 
-      if (memX.get() + argsOffset + 1 >= memory[memY.get()].length) {
+      if (executionMemX.get() + argsOffset + 1 >= memory[executionMemY.get()].length) {
 
-        if (memY.get() + 1 >= memory.length) {
+        if (executionMemY.get() + 1 >= memory.length) {
           throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ROM memory Overflow");
         }
 
-        memY.set(memY.get() + 1);
-        memX.set(memX.get() + argsOffset - (memory[memY.get()].length - 1));
+        executionMemY.set(executionMemY.get() + 1);
+        executionMemX.set(executionMemX.get() + argsOffset - (memory[executionMemY.get()].length - 1));
       } else {
-        memX.set(memX.get() + argsOffset + 1);
+        executionMemX.set(executionMemX.get() + argsOffset + 1);
       }
     }
 
-    this.compiledCode = response.toString();
-    return new ProcessResponse(this.compiledCode, memory, getRegistersMap());
+    this.compiledCode = executionResponse.toString();
+    return new ProcessResponse(this.compiledCode, memory, getRegistersMap(), false);
   }
 
   @GetMapping("/state")
   public ProcessResponse getCurrentState() {
-    return new ProcessResponse(this.compiledCode, memory, getRegistersMap());
+    return new ProcessResponse(this.compiledCode, memory, getRegistersMap(), false);
+  }
+
+  @PostMapping("/input")
+  public ProcessResponse processInput(@RequestBody ProcessRequest request) {
+    String input = request.sourceCode().trim();
+    return this.executeCode(true, input);
   }
 
   public String buildMemoryString() {
@@ -307,6 +325,13 @@ public class ProcessorResource {
     return list;
   }
 
+  private void clearExecutionContext() {
+    executionMemY.set(0);
+    executionMemX.set(0);
+    clearRegisterStacks();
+    executionResponse = new StringBuilder();
+  }
+
   private Map<String, List<String>> getRegistersMap() {
     Map<String, List<String>> registers = new HashMap<>();
 
@@ -327,7 +352,7 @@ public class ProcessorResource {
   public record ProcessRequest(String sourceCode) {
   }
 
-  public record ProcessResponse(String data, String[][] memoryState, Map<String, List<String>> registers) {
+  public record ProcessResponse(String data, String[][] memoryState, Map<String, List<String>> registers, boolean needsInput) {
   }
 
   public record JumpPlaceholder(int memY, int memX, String placeholderTxt, String originalName) {

@@ -21,7 +21,8 @@ public class ExecuteOpcodeService {
                          String[][] memoryRef,
                          Map<String, JumpPoint> jumpMap,
                          BiFunction<Integer, Integer, Void> jumpFunction,
-                         JumpPoint currentReturnPoint
+                         JumpPoint currentReturnPoint,
+                         String input
   ) {
 
     switch (op) {
@@ -41,10 +42,15 @@ public class ExecuteOpcodeService {
         break;
       }
       case INP: {
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "INP Opcode not implemented");
+        this.doInp(args.getFirst(), input);
+        break;
+      }
+      case INP_C: {
+        this.doInpC(args.getFirst(), input);
+        break;
       }
       case OUT: {
-        this.doOut(args.get(0), response);
+        this.doOut(args.getFirst(), response);
         break;
       }
       case ADD: {
@@ -79,7 +85,7 @@ public class ExecuteOpcodeService {
         return this.doJeq(args.get(0), args.get(1), args.get(2), jumpMap, jumpFunction);
       }
       case JMP: {
-        this.doJmp(args.get(0), jumpMap, jumpFunction);
+        this.doJmp(args.getFirst(), jumpMap, jumpFunction);
         break;
       }
       case CPY: {
@@ -108,11 +114,15 @@ public class ExecuteOpcodeService {
   private void doMov(String value, String registerCode) {
     final Registers register = getRegisterByCode(registerCode);
     // Substring to remove the 0x at the start
-    final int intValue = value.startsWith("0x")
-      ? Integer.parseInt(value.substring(2), 16)
-      : Integer.parseInt(value);
+    try {
+      final int intValue = value.startsWith("0x")
+        ? Integer.parseInt(value.substring(2), 16)
+        : Integer.parseInt(value);
 
-    register.getStack().push(String.valueOf(intValue));
+      register.getStack().push(String.valueOf(intValue));
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Input value must be an integer!", e);
+    }
   }
 
   private void doLoad(String memoryAddress, String registerCode, String[][] memoryRef) {
@@ -130,6 +140,26 @@ public class ExecuteOpcodeService {
     final int[] memoryAddresses = getAddressesFromHex(memoryAddress);
 
     memoryRef[memoryAddresses[0]][memoryAddresses[1]] = register.getStack().pop();
+  }
+
+  private void doInp(String registerCode, String inputValue) {
+    if (Integer.parseInt(inputValue) > 255){
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, inputValue + " is greater than 255. Must be lower!");
+    }
+
+    this.doMov(inputValue, registerCode);
+  }
+
+  private void doInpC(String registerCode, String inputValue) {
+    if (inputValue.isBlank()){
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, inputValue + " is blank!");
+    }
+
+    char[] charsInput = inputValue.toCharArray();
+
+    for (int i = charsInput.length -1 ; i >= 0 ; i--) {
+      this.doMovChar(charsInput[i], registerCode);
+    }
   }
 
   private void doOut(String var, StringBuilder response) {
@@ -246,5 +276,18 @@ public class ExecuteOpcodeService {
       throw new RuntimeException("Value on register to add is not an integer!", e);
     }
     return false;
+  }
+
+  private void doMovChar(char value, String registerCode) {
+    final Registers register = getRegisterByCode(registerCode);
+    // Substring to remove the 0x at the start
+    try {
+//      String hex = String.format("%04x", (int) value);
+      String hex = "0x" + Integer.toHexString(value).toUpperCase();
+
+      register.getStack().push(hex);
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Input value must be an integer!", e);
+    }
   }
 }
