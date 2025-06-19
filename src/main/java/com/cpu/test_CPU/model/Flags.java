@@ -4,5 +4,6 @@ public enum Flags {
   ENDED,
   ERROR,
   EXECUTING,
-  NEEDS_INPUT;
+  NEEDS_INPUT_I,
+  NEEDS_INPUT_C;
 }

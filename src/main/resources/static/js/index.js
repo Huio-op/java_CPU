@@ -192,8 +192,13 @@ function resolveResponse(data, status) {
                     memoryRef.addClass('bold');
                 }
                 break;
-            case 'NEEDS_INPUT':
-                alert("Necessário input do usuário")
+            case 'NEEDS_INPUT_I':
+            case 'NEEDS_INPUT_C':
+                if (data.executionFlag === 'NEEDS_INPUT_I') {
+                    alert("Number input needed");
+                } else if (data.executionFlag === 'NEEDS_INPUT_I') {
+                    alert("Text input needed");
+                }
                 $('#inputField')[0].disabled = false;
                 $('#sendInputBtn')[0].disabled = false;
                 $('#sendInputStepBtn')[0].disabled = false;

@@ -7,10 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static com.cpu.test_CPU.model.Registers.getRegisterByCode;
 
@@ -22,8 +21,8 @@ public class ExecuteOpcodeService {
                          StringBuilder response,
                          String[][] memoryRef,
                          Map<String, JumpPoint> jumpMap,
-                         BiFunction<Integer, Integer, Void> jumpFunction,
-                         JumpPoint currentReturnPoint,
+                         Function<JumpPoint, Void> jumpFunction,
+                         Stack<JumpPoint> returnPointStack,
                          String input
   ) throws InterruptedException {
 
@@ -100,7 +99,7 @@ public class ExecuteOpcodeService {
         break;
       }
       case RET: {
-        this.doRet(currentReturnPoint, jumpFunction);
+        this.doRet(returnPointStack, jumpFunction);
         break;
       }
       case HALT: {
@@ -188,27 +187,27 @@ public class ExecuteOpcodeService {
     this.executeOperation(registerCode1, registerCode2, (int1, int2) -> String.valueOf(int1 / int2));
   }
 
-  private boolean doJgt(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+  private boolean doJgt(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 > int2);
   }
 
-  private boolean doJlt(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+  private boolean doJlt(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 < int2);
   }
 
-  private boolean doJge(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+  private boolean doJge(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 >= int2);
   }
 
-  private boolean doJle(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+  private boolean doJle(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, (int1, int2) -> int1 <= int2);
   }
 
-  private boolean doJeq(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+  private boolean doJeq(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, Objects::equals);
   }
 
-  private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+  private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     this.executeJump(jumpPointHex, jumpMap, jumpFunction);
   }
 
@@ -216,8 +215,9 @@ public class ExecuteOpcodeService {
     this.doMov(getRegisterByCode(registerCode1).getStack().peek(), registerCode2);
   }
 
-  private void doRet(JumpPoint returnPoint, BiFunction<Integer, Integer, Void> jumpFunction) {
-    jumpFunction.apply(returnPoint.rowOrigin(), returnPoint.colOrigin());
+  private void doRet(Stack<JumpPoint> returnPointStack, Function<JumpPoint, Void> jumpFunction) {
+    final JumpPoint returnPoint = returnPointStack.pop();
+    jumpFunction.apply(returnPoint);
   }
 
 
@@ -237,29 +237,33 @@ public class ExecuteOpcodeService {
     final Registers register1 = getRegisterByCode(registerCode1);
     final Registers register2 = getRegisterByCode(registerCode2);
 
-    final String regVal1 = register1.getStack().pop();
-    final String regVal2 = register2.getStack().pop();
     try {
-      final Integer intVal1 = Integer.parseInt(regVal1);
-      final Integer intVal2 = Integer.parseInt(regVal2);
+      final String regVal1 = register1.getStack().pop();
+      final String regVal2 = register2.getStack().pop();
+      try {
+        final Integer intVal1 = Integer.parseInt(regVal1);
+        final Integer intVal2 = Integer.parseInt(regVal2);
 
-      final String result = operation.apply(intVal1, intVal2);
-      this.doMov(result, registerCode1);
-    } catch (NumberFormatException e) {
-      throw new RuntimeException("Value on register to add is not an integer!", e);
+        final String result = operation.apply(intVal1, intVal2);
+        this.doMov(result, registerCode1);
+      } catch (NumberFormatException e) {
+        throw new RuntimeException("Value on register to add is not an integer!", e);
+      }
+    } catch (EmptyStackException e) {
+      throw new RuntimeException("Value on register is null", e);
     }
   }
 
-  private void executeJump(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction) {
+  private void executeJump(String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     final JumpPoint jumpPoint = jumpMap.get(jumpPointHex);
     if (jumpPoint == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Jump point not found!");
     }
 
-    jumpFunction.apply(jumpPoint.rowOrigin(), jumpPoint.colOrigin());
+    jumpFunction.apply(jumpPoint);
   }
 
-  private boolean executeComparison(String jumpPointHex, Map<String, JumpPoint> jumpMap, BiFunction<Integer, Integer, Void> jumpFunction, String registerCode1, String registerCode2, BiFunction<Integer, Integer, Boolean> comparison) {
+  private boolean executeComparison(String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction, String registerCode1, String registerCode2, BiFunction<Integer, Integer, Boolean> comparison) {
     final Registers register1 = getRegisterByCode(registerCode1);
     final Registers register2 = getRegisterByCode(registerCode2);
 

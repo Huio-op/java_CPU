@@ -6,13 +6,22 @@ import com.cpu.test_CPU.model.Opcodes;
 import com.cpu.test_CPU.model.Registers;
 import com.cpu.test_CPU.services.ExecuteOpcodeService;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static com.cpu.test_CPU.model.Registers.getRegisterByCode;
 
@@ -28,7 +37,7 @@ public class ProcessorResource {
 
   final AtomicInteger executionMemY = new AtomicInteger(0);
   final AtomicInteger executionMemX = new AtomicInteger(0);
-  final AtomicReference<JumpPoint> currentReturnPoint = new AtomicReference<>();
+  final Stack<JumpPoint> returnPointStack = new Stack<>();
   StringBuilder executionResponse = new StringBuilder();
   Flags currentFlag = null;
 
@@ -98,7 +107,7 @@ public class ProcessorResource {
         } else if (opcode.equals(Opcodes.DEF)) {
 
           String hexValue = this.getHexString(jumpMap.size());
-          jumpMap.put(hexValue, new JumpPoint(memY, memX, arg));
+          jumpMap.put(hexValue, new JumpPoint(memY, memX, arg, false));
           memory[memY][memX] = hexValue;
 
         } else if (arg.startsWith("R")) {
@@ -143,9 +152,6 @@ public class ProcessorResource {
         }
         memX++;
       }
-    }
-    if (insideDef) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "DEF not closed!");
     }
 
     for (JumpPlaceholder jumpPlaceholder : jumpsDeclared) {
@@ -209,14 +215,12 @@ public class ProcessorResource {
     final int executedY = this.executionMemY.get();
     final int executedX = this.executionMemX.get();
 
-    final BiFunction<Integer, Integer, Void> executeJump = (newY, newX) -> {
-      if (currentReturnPoint.get() != null && newY.equals(currentReturnPoint.get().rowOrigin()) && newX.equals(currentReturnPoint.get().colOrigin())) {
-        currentReturnPoint.set(null);
-      } else {
-        currentReturnPoint.set(new JumpPoint(executionMemY.get(), executionMemX.get(), "RET"));
+    final Function<JumpPoint, Void> executeJump = (jumpPoint) -> {
+      if (!jumpPoint.isReturnPoint()) {
+        returnPointStack.push(new JumpPoint(executionMemY.get(), executionMemX.get(), "RET", true));
       }
-      executionMemY.set(newY);
-      executionMemX.set(newX);
+      executionMemY.set(jumpPoint.rowOrigin());
+      executionMemX.set(jumpPoint.colOrigin());
       return null;
     };
 
@@ -229,7 +233,10 @@ public class ProcessorResource {
       }
 
       if ((opcode.equals(Opcodes.INP) || opcode.equals(Opcodes.INP_C)) && !continueExecutionContext) {
-        this.currentFlag = Flags.NEEDS_INPUT;
+        switch (opcode) {
+          case INP -> this.currentFlag = Flags.NEEDS_INPUT_I;
+          case INP_C -> this.currentFlag = Flags.NEEDS_INPUT_C;
+        }
         return new ExecuteResponse(null, memory, getRegistersMap(),
           this.compiledCode, this.executionMemY.get(), this.executionMemX.get(), this.currentFlag);
       }
@@ -244,7 +251,7 @@ public class ProcessorResource {
         }
       }
 
-      final boolean executionResult = executeOpcodeService.execute(opcode, args, executionResponse, memory, jumpMap, executeJump, currentReturnPoint.get(), req.data());
+      final boolean executionResult = executeOpcodeService.execute(opcode, args, executionResponse, memory, jumpMap, executeJump, returnPointStack, req.data());
 
       continueExecutionContext = false;
 
