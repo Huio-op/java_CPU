@@ -1,5 +1,6 @@
 package com.cpu.test_CPU.services;
 
+import com.cpu.test_CPU.api.ProcessorResource;
 import com.cpu.test_CPU.model.JumpPoint;
 import com.cpu.test_CPU.model.Opcodes;
 import com.cpu.test_CPU.model.Registers;
@@ -117,11 +118,11 @@ public class ExecuteOpcodeService {
     final Registers register = getRegisterByCode(registerCode);
     // Substring to remove the 0x at the start
     try {
-      final int intValue = value.startsWith("0x")
-        ? Integer.parseInt(value.substring(2), 16)
-        : Integer.parseInt(value);
+      value = value.startsWith("0x")
+        ? value
+        : ProcessorResource.getHexString(Integer.parseInt(value));
 
-      register.getStack().push(String.valueOf(intValue));
+      register.getStack().push(value);
     } catch (NumberFormatException e) {
       throw new RuntimeException("Input value must be an integer!", e);
     }
@@ -166,7 +167,10 @@ public class ExecuteOpcodeService {
 
   private void doOut(String var, StringBuilder response) {
     final Registers register = getRegisterByCode(var);
-    response.append(register.getStack().pop());
+    final String value = register.getStack().pop();
+    final int intValue = intFromHex(value);
+
+    response.append(intValue);
     response.append("\n");
   }
 
@@ -241,13 +245,13 @@ public class ExecuteOpcodeService {
       final String regVal1 = register1.getStack().pop();
       final String regVal2 = register2.getStack().pop();
       try {
-        final Integer intVal1 = Integer.parseInt(regVal1);
-        final Integer intVal2 = Integer.parseInt(regVal2);
+        final Integer intVal1 = intFromHex(regVal1);
+        final Integer intVal2 = intFromHex(regVal2);
 
         final String result = operation.apply(intVal1, intVal2);
         this.doMov(result, registerCode1);
       } catch (NumberFormatException e) {
-        throw new RuntimeException("Value on register to add is not an integer!", e);
+        throw new RuntimeException("Value on register to execute operation is not an integer!", e);
       }
     } catch (EmptyStackException e) {
       throw new RuntimeException("Value on register is null", e);
@@ -270,8 +274,8 @@ public class ExecuteOpcodeService {
     final String regVal1 = register1.getStack().peek();
     final String regVal2 = register2.getStack().peek();
     try {
-      final Integer intVal1 = Integer.parseInt(regVal1);
-      final Integer intVal2 = Integer.parseInt(regVal2);
+      final Integer intVal1 = intFromHex(regVal1);
+      final Integer intVal2 = intFromHex(regVal2);
 
       final boolean comparisonResult = comparison.apply(intVal1, intVal2);
       if (comparisonResult) {
@@ -279,7 +283,7 @@ public class ExecuteOpcodeService {
         return true;
       }
     } catch (NumberFormatException e) {
-      throw new RuntimeException("Value on register to add is not an integer!", e);
+      throw new RuntimeException("Value on register to compare is not an integer!", e);
     }
     return false;
   }
@@ -294,5 +298,11 @@ public class ExecuteOpcodeService {
     } catch (NumberFormatException e) {
       throw new RuntimeException("Input value must be an integer!", e);
     }
+  }
+
+  private int intFromHex(String value) {
+    return value.startsWith("0x")
+      ? Integer.parseInt(value.substring(2), 16)
+      : Integer.parseInt(value);
   }
 }

@@ -6,20 +6,10 @@ import com.cpu.test_CPU.model.Opcodes;
 import com.cpu.test_CPU.model.Registers;
 import com.cpu.test_CPU.services.ExecuteOpcodeService;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -51,7 +41,7 @@ public class ProcessorResource {
   public ProcessResponse compileCode(@RequestBody ProcessReq request) {
     // Clear jump map
     this.jumpMap.clear();
-    this.clearExecutionContext();
+    this.clearExecutionContext(false);
 
     final String[] commandsByLine = request.sourceCode().split("\n");
 
@@ -208,7 +198,7 @@ public class ProcessorResource {
   public ExecuteResponse executeCode(@RequestBody ExecuteReq req, boolean continueExecutionContext) throws InterruptedException {
 
     if ((!continueExecutionContext && !req.step()) || (this.currentFlag != null && this.currentFlag.equals(Flags.ENDED))) {
-      this.clearExecutionContext();
+      this.clearExecutionContext(true);
     }
 
     final String compiledCode = req.step() ? buildCompiledCode(true) : this.compiledCode;
@@ -299,7 +289,7 @@ public class ProcessorResource {
     return this.executeCode(request, true);
   }
 
-  private String getHexString(int integer) {
+  public static String getHexString(int integer) {
     String hexValue = Integer.toHexString(integer);
     if (hexValue.length() == 1) {
       hexValue = "0x0" + hexValue;
@@ -349,11 +339,12 @@ public class ProcessorResource {
     return list;
   }
 
-  private void clearExecutionContext() {
+  private void clearExecutionContext(boolean onlyRam) {
     executionMemY.set(0);
     executionMemX.set(0);
     clearRegisterStacks();
     executionResponse = new StringBuilder();
+    clearMemory(onlyRam);
   }
 
   private Map<String, List<String>> getRegistersMap() {
@@ -372,6 +363,14 @@ public class ProcessorResource {
     getRegisterByCode(Registers.RB.getHexCode()).getStack().clear();
     getRegisterByCode(Registers.RC.getHexCode()).getStack().clear();
     getRegisterByCode(Registers.RD.getHexCode()).getStack().clear();
+  }
+
+  private void clearMemory(boolean onlyRam) {
+    for (int y = onlyRam ? romOffset : 0; y < memory.length; y++) {
+      for (int x = 0; x < memory[y].length; x++) {
+        memory[y][x] = null;
+      }
+    }
   }
 
   private String buildCompiledCode(boolean highlightExecutionContext) {
