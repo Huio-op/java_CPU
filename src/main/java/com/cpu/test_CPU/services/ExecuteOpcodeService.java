@@ -282,7 +282,7 @@ public class ExecuteOpcodeService {
     final Registers register = getRegisterByCode(registerCode);
     // Substring to remove the 0x at the start
     try {
-//      String hex = String.format("%04x", (int) value);
+    // String hex = String.format("%04x", (int) value);
       String hex = "0x" + Integer.toHexString(value).toUpperCase();
 
       register.getStack().push(hex);
