@@ -398,6 +398,11 @@ public class ProcessorResource {
         }
       }
 
+      for (int i = 5; i > opcode.getExpectedArgs(); i--) {
+        compiledCode.append("        ");
+      }
+      compiledCode.append("-- " + opcode.name());
+
       // Next function
       if (x + opcode.getExpectedArgs() + 1 >= memory[y].length) {
         if (y + 1 >= memory.length) {
