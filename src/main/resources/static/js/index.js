@@ -1,4 +1,5 @@
 let registerData = {};
+
 function compileCode() {
 
     const sourceCodeInput = $('#sourceCodeInput')[0];
@@ -33,10 +34,14 @@ $(document).ready(() => {
     $('#compiledCodeOutput').change(function (event) {
         if (event.target.value) {
             $('#executeCodeBtn')[0].disabled = false;
+            $('#stepCodeBtn')[0].disabled = false;
         }
     });
     $('#inputField')[0].disabled = true;
     $('#sendInputBtn')[0].disabled = true;
+    $('#sendInputStepBtn')[0].disabled = true;
+    $('#executeCodeBtn')[0].disabled = false;
+    $('#stepCodeBtn')[0].disabled = false;
 
     initializeEmptyRegisters();
 
@@ -52,6 +57,12 @@ $(document).ready(() => {
             if (data.registers) {
                 updateRegistersFromBackend(data.registers);
             }
+
+            if (data.compiledCode) {
+                $('#compiledCodeOutput')
+                    .val(data.compiledCode)
+                    .trigger('change');
+            }
         },
         error: (error, type) => {
             console.error("error:", error);
@@ -60,11 +71,13 @@ $(document).ready(() => {
     });
 });
 
-function executeCode() {
-
+function executeCode(step = false) {
     $.ajax({
         type: 'post',
         url: 'api/processor/execute',
+        data: JSON.stringify({
+            step
+        }),
         context: document.body,
         contentType: 'application/json',
         success: (data, status) => {
@@ -81,6 +94,7 @@ function applyMemoryState(memoryState) {
     memoryState.forEach((row, rowIdx) => {
         row.forEach((col, colIdx) => {
             const memoryRef = $(`#table-row-${rowIdx}-col-${colIdx}`);
+            memoryRef.removeClass('bold');
             memoryRef.empty().append(col ?? '0000');
         });
     });
@@ -122,12 +136,12 @@ function updateRegisters() {
 function updateRegistersFromBackend(registers) {
     if (registers) {
         // Atualiza a variável global com os dados recebidos
-        registerData = { ...registers };
+        registerData = {...registers};
         updateRegisters();
     }
 }
 
-function sendInput() {
+function sendInput(step = false) {
 
     const inputField = $('#inputField')[0];
     const inputValue = inputField.value;
@@ -138,13 +152,17 @@ function sendInput() {
         context: document.body,
         contentType: 'application/json',
         data: JSON.stringify({
-            sourceCode: inputValue,
+            data: inputValue,
+            step
         }),
         success: (data, status) => {
-            const inputField =$('#inputField');
+            const inputField = $('#inputField');
             inputField[0].disabled = true;
             inputField.val('');
             $('#sendInputBtn')[0].disabled = true;
+            $('#sendInputStepBtn')[0].disabled = true;
+            $('#executeCodeBtn')[0].disabled = false;
+            $('#stepCodeBtn')[0].disabled = false;
             resolveResponse(data, status);
         },
         error: (error, type) => {
@@ -155,14 +173,38 @@ function sendInput() {
 }
 
 function resolveResponse(data, status) {
-    if (data.needsInput) {
-        alert("Necessário input do usuário")
-        $('#inputField')[0].disabled = false;
-        $('#sendInputBtn')[0].disabled = false;
-    } else {
-        $('#outputField').val(data.data);
+    if (data.output) {
+        $('#outputField').val(data.output);
     }
     applyMemoryState(data.memoryState);
+
+    $('#compiledCodeOutput')
+        .val(data.compiledCode)
+        .trigger('change');
+
+    if (data.executionFlag) {
+        switch (data.executionFlag) {
+            case 'ENDED':
+                break;
+            case 'EXECUTING':
+                if (data.hasOwnProperty('executionY') && data.hasOwnProperty('executionX')) {
+                    const memoryRef = $(`#table-row-${data.executionY}-col-${data.executionX}`);
+                    memoryRef.addClass('bold');
+                }
+                break;
+            case 'NEEDS_INPUT':
+                alert("Necessário input do usuário")
+                $('#inputField')[0].disabled = false;
+                $('#sendInputBtn')[0].disabled = false;
+                $('#sendInputStepBtn')[0].disabled = false;
+
+                $('#executeCodeBtn')[0].disabled = true;
+                $('#stepCodeBtn')[0].disabled = true;
+
+                break;
+            default:
+        }
+    }
 
     if (data.registers) {
         updateRegistersFromBackend(data.registers);

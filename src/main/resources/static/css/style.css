@@ -2,9 +2,12 @@ body {
     padding: 20px;
 }
 
+textarea {
+    resize: none !important;
+}
+
 .top-row {
     display: flex;
-    gap: 20px;
     margin-bottom: 20px;
 }
 
@@ -156,4 +159,8 @@ table td:first-child {
 
 table td {
     text-align: end;
+}
+
+.bold {
+    font-weight: bold;
 }

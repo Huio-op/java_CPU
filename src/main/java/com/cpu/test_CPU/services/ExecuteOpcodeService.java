@@ -7,7 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import static com.cpu.test_CPU.model.Registers.getRegisterByCode;
@@ -23,11 +25,12 @@ public class ExecuteOpcodeService {
                          BiFunction<Integer, Integer, Void> jumpFunction,
                          JumpPoint currentReturnPoint,
                          String input
-  ) {
+  ) throws InterruptedException {
 
     switch (op) {
       case NOOP: {
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "NOOP Opcode not implemented");
+        Thread.sleep(1);
+        break;
       }
       case MOV: {
         this.doMov(args.get(0), args.get(1));
@@ -143,7 +146,7 @@ public class ExecuteOpcodeService {
   }
 
   private void doInp(String registerCode, String inputValue) {
-    if (Integer.parseInt(inputValue) > 255){
+    if (Integer.parseInt(inputValue) > 255) {
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, inputValue + " is greater than 255. Must be lower!");
     }
 
@@ -151,13 +154,13 @@ public class ExecuteOpcodeService {
   }
 
   private void doInpC(String registerCode, String inputValue) {
-    if (inputValue.isBlank()){
+    if (inputValue.isBlank()) {
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, inputValue + " is blank!");
     }
 
     char[] charsInput = inputValue.toCharArray();
 
-    for (int i = charsInput.length -1 ; i >= 0 ; i--) {
+    for (int i = charsInput.length - 1; i >= 0; i--) {
       this.doMovChar(charsInput[i], registerCode);
     }
   }
@@ -218,7 +221,6 @@ public class ExecuteOpcodeService {
   }
 
 
-
   private int[] getAddressesFromHex(String hexAddress) {
     final int[] addresses = new int[2];
 
@@ -261,8 +263,8 @@ public class ExecuteOpcodeService {
     final Registers register1 = getRegisterByCode(registerCode1);
     final Registers register2 = getRegisterByCode(registerCode2);
 
-    final String regVal1 = register1.getStack().pop();
-    final String regVal2 = register2.getStack().pop();
+    final String regVal1 = register1.getStack().peek();
+    final String regVal2 = register2.getStack().peek();
     try {
       final Integer intVal1 = Integer.parseInt(regVal1);
       final Integer intVal2 = Integer.parseInt(regVal2);
@@ -282,7 +284,6 @@ public class ExecuteOpcodeService {
     final Registers register = getRegisterByCode(registerCode);
     // Substring to remove the 0x at the start
     try {
-    // String hex = String.format("%04x", (int) value);
       String hex = "0x" + Integer.toHexString(value).toUpperCase();
 
       register.getStack().push(hex);

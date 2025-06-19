@@ -1,5 +1,6 @@
 package com.cpu.test_CPU.api;
 
+import com.cpu.test_CPU.model.Flags;
 import com.cpu.test_CPU.model.JumpPoint;
 import com.cpu.test_CPU.model.Opcodes;
 import com.cpu.test_CPU.model.Registers;
@@ -27,7 +28,9 @@ public class ProcessorResource {
 
   final AtomicInteger executionMemY = new AtomicInteger(0);
   final AtomicInteger executionMemX = new AtomicInteger(0);
+  final AtomicReference<JumpPoint> currentReturnPoint = new AtomicReference<>();
   StringBuilder executionResponse = new StringBuilder();
+  Flags currentFlag = null;
 
   private final ExecuteOpcodeService executeOpcodeService;
 
@@ -36,14 +39,12 @@ public class ProcessorResource {
   }
 
   @PostMapping("/compile")
-  public ProcessResponse compileCode(@RequestBody ProcessRequest request) {
+  public ProcessResponse compileCode(@RequestBody ProcessReq request) {
     // Clear jump map
     this.jumpMap.clear();
     this.clearExecutionContext();
 
     final String[] commandsByLine = request.sourceCode().split("\n");
-    final StringBuilder compiledCode = new StringBuilder();
-    compiledCode.append("-- BEGIN --\n");
 
     int memY = 0;
     int memX = 0;
@@ -81,8 +82,6 @@ public class ProcessorResource {
         if (funcName.isPresent()) {
           final Opcodes function = funcName.get();
           memory[memY][memX] = function.getHexCode();
-          compiledCode.append("\n");
-          compiledCode.append(function.getHexCode());
 
           if (function.equals(Opcodes.DEF)) {
             if (insideDef) {
@@ -101,7 +100,6 @@ public class ProcessorResource {
           String hexValue = this.getHexString(jumpMap.size());
           jumpMap.put(hexValue, new JumpPoint(memY, memX, arg));
           memory[memY][memX] = hexValue;
-          compiledCode.append(" ").append(hexValue);
 
         } else if (arg.startsWith("R")) {
 
@@ -111,8 +109,6 @@ public class ProcessorResource {
           }
           final Registers register = registerOptional.get();
           memory[memY][memX] = register.getHexCode();
-          compiledCode.append(" ")
-            .append(register.getHexCode());
 
         } else if (arg.startsWith("@")) {
           // TODO format memory address
@@ -134,23 +130,16 @@ public class ProcessorResource {
           }
 
           memory[memY][memX] = hexString.toString();
-          compiledCode.append(" ")
-            .append(hexString.toString());
 
         } else if (this.isJumpOpcode(opcode)) {
 
           final String placeholderText = "${" + jumpsDeclared.size() + "}";
           final JumpPlaceholder placeholder = new JumpPlaceholder(memY, memX, placeholderText, arg);
           jumpsDeclared.add(placeholder);
-          compiledCode.append(" ")
-            .append(placeholderText);
-
         } else {
           String hexValue = this.getHexString(Integer.parseInt(arg));
 
           memory[memY][memX] = hexValue;
-          compiledCode.append(" ")
-            .append(hexValue);
         }
         memX++;
       }
@@ -170,11 +159,10 @@ public class ProcessorResource {
 
       final String jumpPointKey = jumpPointOptional.get().getKey();
       memory[jumpPlaceholder.memY()][jumpPlaceholder.memX()] = jumpPointKey;
-      final int indexToReplace = compiledCode.indexOf(jumpPlaceholder.placeholderTxt());
-      compiledCode.replace(indexToReplace, indexToReplace + jumpPlaceholder.placeholderTxt().length(), jumpPointKey);
     }
 
-    return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory, getRegistersMap(), false);
+    this.compiledCode = this.buildCompiledCode(false);
+    return new ProcessResponse(this.compiledCode, memory, getRegistersMap());
   }
 
   private static void validateRamMemoryAddress(String[] args, Opcodes function) {
@@ -191,18 +179,18 @@ public class ProcessorResource {
     }
 
     if (!memory.startsWith("@")) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory address must start with @");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory address must start with @");
     }
 
     final String[] addresses = memory.replaceAll("@", "")
-            .split(",");
+      .split(",");
 
     if (addresses.length > 2) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses have only two coordinates");
     }
 
     if (Integer.parseInt(addresses[0]) < 9 || Integer.parseInt(addresses[0]) > 15) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'@"+addresses[0]+","+addresses[1]+"' is out of RAM's bounds.\n\n RAM memory starts at @9,0 and ends at @15,15!");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'@" + addresses[0] + "," + addresses[1] + "' is out of RAM's bounds.\n\n RAM memory starts at @9,0 and ends at @15,15!");
     }
 
     if (Integer.parseInt(addresses[1]) < 0 || Integer.parseInt(addresses[1]) > 15) {
@@ -211,13 +199,15 @@ public class ProcessorResource {
   }
 
   @PostMapping("/execute")
-  public ProcessResponse executeCode(boolean continueExecutionContext, String input) {
+  public ExecuteResponse executeCode(@RequestBody ExecuteReq req, boolean continueExecutionContext) throws InterruptedException {
 
-    if (!continueExecutionContext) {
+    if ((!continueExecutionContext && !req.step()) || (this.currentFlag != null && this.currentFlag.equals(Flags.ENDED))) {
       this.clearExecutionContext();
     }
 
-    final AtomicReference<JumpPoint> currentReturnPoint = new AtomicReference<>();
+    final String compiledCode = req.step() ? buildCompiledCode(true) : this.compiledCode;
+    final int executedY = this.executionMemY.get();
+    final int executedX = this.executionMemX.get();
 
     final BiFunction<Integer, Integer, Void> executeJump = (newY, newX) -> {
       if (currentReturnPoint.get() != null && newY.equals(currentReturnPoint.get().rowOrigin()) && newX.equals(currentReturnPoint.get().colOrigin())) {
@@ -232,17 +222,16 @@ public class ProcessorResource {
 
     while (true) {
 
-      final Opcodes opcode = this.getOpcodesInCursor(executionMemY, executionMemX);
-      if (opcode == null) {
-        break;
-      }
-
-      if (opcode.equals(Opcodes.HALT)) {
+      final Opcodes opcode = this.getOpcodesInCursor(executionMemY.get(), executionMemX.get());
+      if (opcode == null || opcode.equals(Opcodes.HALT)) {
+        currentFlag = Flags.ENDED;
         break;
       }
 
       if ((opcode.equals(Opcodes.INP) || opcode.equals(Opcodes.INP_C)) && !continueExecutionContext) {
-        return new ProcessResponse(null, memory, getRegistersMap(), true);
+        this.currentFlag = Flags.NEEDS_INPUT;
+        return new ExecuteResponse(null, memory, getRegistersMap(),
+          this.compiledCode, this.executionMemY.get(), this.executionMemX.get(), this.currentFlag);
       }
 
       final ArrayList<String> args = new ArrayList<>();
@@ -255,13 +244,13 @@ public class ProcessorResource {
         }
       }
 
-      final boolean executionResult = executeOpcodeService.execute(opcode, args, executionResponse, memory, jumpMap, executeJump, currentReturnPoint.get(), input);
+      final boolean executionResult = executeOpcodeService.execute(opcode, args, executionResponse, memory, jumpMap, executeJump, currentReturnPoint.get(), req.data());
 
       continueExecutionContext = false;
 
       int argsOffset = 0;
       if (opcode.equals(Opcodes.RET) || isJumpOpcode(opcode)) {
-        final Opcodes jumpOpcode = this.getOpcodesInCursor(executionMemY, executionMemX);
+        final Opcodes jumpOpcode = this.getOpcodesInCursor(executionMemY.get(), executionMemX.get());
         if (jumpOpcode == null) {
           throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Original jump function not found");
         }
@@ -281,34 +270,26 @@ public class ProcessorResource {
       } else {
         executionMemX.set(executionMemX.get() + argsOffset + 1);
       }
+
+      if (req.step()) {
+        this.currentFlag = Flags.EXECUTING;
+        break;
+      }
     }
 
-    this.compiledCode = executionResponse.toString();
-    return new ProcessResponse(this.compiledCode, memory, getRegistersMap(), false);
+    return new ExecuteResponse(executionResponse.toString(), memory, getRegistersMap(), compiledCode,
+      executedY, executedX, this.currentFlag);
   }
 
   @GetMapping("/state")
-  public ProcessResponse getCurrentState() {
-    return new ProcessResponse(this.compiledCode, memory, getRegistersMap(), false);
+  public ExecuteResponse getCurrentState() {
+    return new ExecuteResponse(null, memory, getRegistersMap(),
+      this.compiledCode, this.executionMemY.get(), this.executionMemX.get(), this.currentFlag);
   }
 
   @PostMapping("/input")
-  public ProcessResponse processInput(@RequestBody ProcessRequest request) {
-    String input = request.sourceCode().trim();
-    return this.executeCode(true, input);
-  }
-
-  public String buildMemoryString() {
-    StringBuilder out = new StringBuilder();
-    for (int i = 0; i < memory.length; i++) {
-      out.append("|");
-      for (int j = 0; j < memory[i].length; j++) {
-        out.append(memory[i][j] == null ? "0000" : memory[i][j]);
-        out.append("|");
-      }
-      out.append("\n");
-    }
-    return out.toString();
+  public ExecuteResponse processInput(@RequestBody ExecuteReq request) throws InterruptedException {
+    return this.executeCode(request, true);
   }
 
   private String getHexString(int integer) {
@@ -328,8 +309,8 @@ public class ProcessorResource {
     };
   }
 
-  private Opcodes getOpcodesInCursor(AtomicInteger memY, AtomicInteger memX) {
-    final String funcCode = memory[memY.get()][memX.get()];
+  private Opcodes getOpcodesInCursor(int memY, int memX) {
+    final String funcCode = memory[memY][memX];
 
     if (funcCode == null) {
       return null;
@@ -379,16 +360,66 @@ public class ProcessorResource {
     return registers;
   }
 
-  private void clearRegisterStacks(){
+  private void clearRegisterStacks() {
     getRegisterByCode(Registers.RA.getHexCode()).getStack().clear();
     getRegisterByCode(Registers.RB.getHexCode()).getStack().clear();
     getRegisterByCode(Registers.RC.getHexCode()).getStack().clear();
     getRegisterByCode(Registers.RD.getHexCode()).getStack().clear();
   }
-  public record ProcessRequest(String sourceCode) {
+
+  private String buildCompiledCode(boolean highlightExecutionContext) {
+    final StringBuilder compiledCode = new StringBuilder();
+    compiledCode.append("-- BEGIN --\n");
+    int y = 0;
+    int x = 0;
+
+    while (memory[y][x] != null) {
+
+      compiledCode.append("\n");
+      if (highlightExecutionContext && y == executionMemY.get() && x == executionMemX.get()) {
+        compiledCode.append("-->");
+      }
+      compiledCode.append(memory[y][x]);
+
+      final Opcodes opcode = this.getOpcodesInCursor(y, x);
+
+      for (int k = 1; k <= opcode.getExpectedArgs(); k++) {
+        compiledCode.append(" ");
+        if (x + k >= memory[y].length) {
+          compiledCode.append(memory[y + 1][(x + k - (memory[y].length))]);
+        } else {
+          compiledCode.append(memory[y][x + k]);
+        }
+      }
+
+      // Next function
+      if (x + opcode.getExpectedArgs() + 1 >= memory[y].length) {
+        if (y + 1 >= memory.length) {
+          throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ROM memory Overflow");
+        }
+        y = y + 1;
+        x = x + opcode.getExpectedArgs() - (memory[y].length - 1);
+      } else {
+        x = x + opcode.getExpectedArgs() + 1;
+      }
+    }
+
+    compiledCode.append("\n\n-- END --");
+    return compiledCode.toString();
   }
 
-  public record ProcessResponse(String data, String[][] memoryState, Map<String, List<String>> registers, boolean needsInput) {
+  public record ProcessReq(String sourceCode) {
+  }
+
+  public record ExecuteReq(String data, boolean step) {
+  }
+
+  public record ProcessResponse(String data, String[][] memoryState, Map<String, List<String>> registers) {
+  }
+
+  public record ExecuteResponse(String output, String[][] memoryState, Map<String, List<String>> registers,
+                                String compiledCode, int executionY, int executionX,
+                                Flags executionFlag) {
   }
 
   public record JumpPlaceholder(int memY, int memX, String placeholderTxt, String originalName) {
