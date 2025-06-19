@@ -93,6 +93,9 @@ public class ProcessorResource {
           } else if (function.equals(Opcodes.RET)) {
             insideDef = false;
           }
+
+          validateRamMemoryAddress(args, function);
+
         } else if (opcode.equals(Opcodes.DEF)) {
 
           String hexValue = this.getHexString(jumpMap.size());
@@ -172,6 +175,39 @@ public class ProcessorResource {
     }
 
     return new ProcessResponse(compiledCode.append("\n\n-- END --").toString(), memory, getRegistersMap(), false);
+  }
+
+  private static void validateRamMemoryAddress(String[] args, Opcodes function) {
+    if (!(function.equals(Opcodes.SAVE) || function.equals(Opcodes.LOAD))) {
+      return;
+    }
+
+    String memory = "";
+
+    if (function.equals(Opcodes.SAVE)) {
+      memory = args[2];
+    } else {
+      memory = args[1];
+    }
+
+    if (!memory.startsWith("@")) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory address must start with @");
+    }
+
+    final String[] addresses = memory.replaceAll("@", "")
+            .split(",");
+
+    if (addresses.length > 2) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Memory addresses have only two coordinates");
+    }
+
+    if (Integer.parseInt(addresses[0]) < 9 || Integer.parseInt(addresses[0]) > 15) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'@"+addresses[0]+","+addresses[1]+"' is out of RAM's bounds.\n\n RAM memory starts at @9,0 and ends at @15,15!");
+    }
+
+    if (Integer.parseInt(addresses[1]) < 0 || Integer.parseInt(addresses[1]) > 15) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The memory only has 15 addresses!");
+    }
   }
 
   @PostMapping("/execute")

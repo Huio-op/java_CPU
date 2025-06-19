@@ -224,7 +224,7 @@ public class ExecuteOpcodeService {
 
     final char[] chars = hexAddress.substring(2).toCharArray();
     for (int i = 0; i < chars.length; i++) {
-      addresses[i] = Integer.valueOf(String.valueOf(chars[i]), 15);
+      addresses[i] = Integer.valueOf(String.valueOf(chars[i]), 16);
     }
     return addresses;
   }
