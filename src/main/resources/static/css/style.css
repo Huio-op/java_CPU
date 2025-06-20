@@ -59,6 +59,11 @@ textarea {
     height: 100%;
 }
 
+.registers-container.vertical {
+    flex: 1;
+    flex-direction: column;
+}
+
 .register-column {
     flex: 1;
     border: 1px solid #ccc;
@@ -66,6 +71,10 @@ textarea {
     background-color: #f8f9fa;
     display: flex;
     flex-direction: column;
+}
+
+.register-column.small {
+    height: 50%;
 }
 
 .register-header {

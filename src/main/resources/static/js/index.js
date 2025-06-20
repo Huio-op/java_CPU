@@ -1,4 +1,3 @@
-let registerData = {};
 
 function compileCode() {
 
@@ -101,14 +100,15 @@ function applyMemoryState(memoryState) {
 }
 
 function initializeEmptyRegisters() {
-    const registerNames = ['RA', 'RB', 'RC', 'RD'];
+    const registerData = {};
+    const registerNames = ['RA', 'RB', 'RC', 'RD', 'PC', 'SP'];
     registerNames.forEach(registerName => {
         registerData[registerName] = [];
     });
-    updateRegisters();
+    updateRegisters(registerData);
 }
 
-function updateRegisters() {
+function updateRegisters(registerData) {
     Object.keys(registerData).forEach(registerName => {
         const registerElement = document.getElementById(`register-${registerName}`);
         const values = registerData[registerName];
@@ -136,8 +136,8 @@ function updateRegisters() {
 function updateRegistersFromBackend(registers) {
     if (registers) {
         // Atualiza a variável global com os dados recebidos
-        registerData = {...registers};
-        updateRegisters();
+        const registerData = {...registers};
+        updateRegisters(registerData);
     }
 }
 
@@ -196,7 +196,7 @@ function resolveResponse(data, status) {
             case 'NEEDS_INPUT_C':
                 if (data.executionFlag === 'NEEDS_INPUT_I') {
                     alert("Number input needed");
-                } else if (data.executionFlag === 'NEEDS_INPUT_I') {
+                } else if (data.executionFlag === 'NEEDS_INPUT_C') {
                     alert("Text input needed");
                 }
                 $('#inputField')[0].disabled = false;

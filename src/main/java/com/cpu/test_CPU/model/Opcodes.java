@@ -22,6 +22,8 @@ public enum Opcodes {
   DEF("0x11", 1),
   RET("0x12", 0),
   INP_C("0x13", 1),
+  OUT_C("0x14", 1),
+  JNN("0x15", 2), // Jump Not Null
   HALT("0xFF", 0);
 
   private String hexCode;

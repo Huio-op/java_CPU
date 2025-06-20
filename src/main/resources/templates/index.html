@@ -35,7 +35,8 @@
                     <label for="compiledCodeOutput" class="form-label">Compiled code:</label>
                     <textarea class="form-control" id="compiledCodeOutput" name="compiledCode" disabled></textarea>
                     <div class="btn-container">
-                        <button id="executeCodeBtn" disabled class="btn btn-primary" onclick="executeCode(false)">Execute
+                        <button id="executeCodeBtn" disabled class="btn btn-primary" onclick="executeCode(false)">
+                            Execute
                         </button>
                         <button id="stepCodeBtn" disabled class="btn btn-primary" onclick="executeCode(true)">Step
                         </button>
@@ -72,6 +73,21 @@
                     <div class="register-header">RD</div>
                     <div class="register-values" id="register-RD">
                         <!-- Valores serão preenchidos pelo JavaScript -->
+                    </div>
+                </div>
+
+                <div class="registers-container vertical">
+                    <div class="register-column small">
+                        <div class="register-header">PC</div>
+                        <div class="register-values" id="register-PC">
+                            <!-- Valores serão preenchidos pelo JavaScript -->
+                        </div>
+                    </div>
+                    <div class="register-column small">
+                        <div class="register-header">SP</div>
+                        <div class="register-values" id="register-SP">
+                            <!-- Valores serão preenchidos pelo JavaScript -->
+                        </div>
                     </div>
                 </div>
             </div>

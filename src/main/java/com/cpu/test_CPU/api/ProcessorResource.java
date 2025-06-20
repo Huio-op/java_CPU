@@ -301,7 +301,7 @@ public class ProcessorResource {
 
   private boolean isJumpOpcode(Opcodes opcode) {
     return switch (opcode) {
-      case JEQ, JLE, JGT, JGE, JLT, JMP -> true;
+      case JEQ, JLE, JGT, JGE, JLT, JNN, JMP -> true;
       default -> false;
     };
   }
@@ -350,10 +350,22 @@ public class ProcessorResource {
   private Map<String, List<String>> getRegistersMap() {
     Map<String, List<String>> registers = new HashMap<>();
 
+    final Opcodes nextOpcode = this.getOpcodesInCursor(executionMemY.get(), executionMemX.get());
+
     registers.put("RA", stackToList(getRegisterByCode(Registers.RA.getHexCode()).getStack()));
     registers.put("RB", stackToList(getRegisterByCode(Registers.RB.getHexCode()).getStack()));
     registers.put("RC", stackToList(getRegisterByCode(Registers.RC.getHexCode()).getStack()));
     registers.put("RD", stackToList(getRegisterByCode(Registers.RD.getHexCode()).getStack()));
+    if (nextOpcode != null) {
+      registers.put("PC", Collections.singletonList(executionMemY.get() + ", " + executionMemX.get() + ": " + nextOpcode.name() + "(" + nextOpcode.getHexCode() + ")"));
+    }
+    if (!jumpMap.isEmpty()) {
+      final ArrayList<String> jumpList = new ArrayList<>();
+      for (Map.Entry<String, JumpPoint> entry : jumpMap.entrySet()) {
+        jumpList.add(entry.getValue().name() + " (" + entry.getKey() + ")");
+      }
+      registers.put("SP", jumpList);
+    }
 
     return registers;
   }
@@ -399,7 +411,7 @@ public class ProcessorResource {
       }
 
       for (int i = 5; i > opcode.getExpectedArgs(); i--) {
-        compiledCode.append("        ");
+        compiledCode.append("       ");
       }
       compiledCode.append("-- " + opcode.name());
 

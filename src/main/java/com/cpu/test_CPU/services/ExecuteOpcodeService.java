@@ -56,6 +56,10 @@ public class ExecuteOpcodeService {
         this.doOut(args.getFirst(), response);
         break;
       }
+      case OUT_C: {
+        this.doOutC(args.getFirst(), response);
+        break;
+      }
       case ADD: {
         this.doAdd(args.get(0), args.get(1));
         break;
@@ -86,6 +90,9 @@ public class ExecuteOpcodeService {
       }
       case JEQ: {
         return this.doJeq(args.get(0), args.get(1), args.get(2), jumpMap, jumpFunction);
+      }
+      case JNN: {
+        return this.doJnn(args.get(0), args.get(1), jumpMap, jumpFunction);
       }
       case JMP: {
         this.doJmp(args.getFirst(), jumpMap, jumpFunction);
@@ -165,13 +172,20 @@ public class ExecuteOpcodeService {
     }
   }
 
-  private void doOut(String var, StringBuilder response) {
-    final Registers register = getRegisterByCode(var);
+  private void doOut(String registerCode, StringBuilder response) {
+    final Registers register = getRegisterByCode(registerCode);
     final String value = register.getStack().pop();
     final int intValue = intFromHex(value);
 
     response.append(intValue);
     response.append("\n");
+  }
+
+  public void doOutC(String registerCode, StringBuilder response) {
+    final Registers register = getRegisterByCode(registerCode);
+    final String value = register.getStack().pop();
+
+    response.append(charFromHex(value));
   }
 
   private void doAdd(String registerCode1, String registerCode2) {
@@ -209,6 +223,19 @@ public class ExecuteOpcodeService {
 
   private boolean doJeq(String registerCode1, String registerCode2, String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
     return this.executeComparison(jumpPointHex, jumpMap, jumpFunction, registerCode1, registerCode2, Objects::equals);
+  }
+
+  private boolean doJnn(String registerCode, String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
+    final Registers register = getRegisterByCode(registerCode);
+    try {
+      if (!register.getStack().isEmpty()) {
+        this.executeJump(jumpPointHex, jumpMap, jumpFunction);
+        return true;
+      }
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Value on register to compare is not an integer!", e);
+    }
+    return false;
   }
 
   private void doJmp(String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction) {
@@ -304,5 +331,10 @@ public class ExecuteOpcodeService {
     return value.startsWith("0x")
       ? Integer.parseInt(value.substring(2), 16)
       : Integer.parseInt(value);
+  }
+
+  private char charFromHex(String value) {
+    final int intValue = intFromHex(value);
+    return (char) intValue;
   }
 }
