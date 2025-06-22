@@ -90,6 +90,8 @@ public class ProcessorResource {
             insideDef = true;
           } else if (function.equals(Opcodes.RET)) {
             insideDef = false;
+          } else if (function.equals(Opcodes.HALT) && insideDef) {
+            insideDef = false;
           }
 
           validateRamMemoryAddress(args, function);
@@ -150,7 +152,7 @@ public class ProcessorResource {
       ).findFirst();
 
       if (jumpPointOptional.isEmpty()) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Jump point not defined!");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Jump point not defined: " + jumpPlaceholder.originalName());
       }
 
       final String jumpPointKey = jumpPointOptional.get().getKey();

@@ -102,6 +102,14 @@ public class ExecuteOpcodeService {
         this.doCpy(args.get(0), args.get(1));
         break;
       }
+      case CUT: {
+        this.doCut(args.get(0), args.get(1));
+        break;
+      }
+      case DEL: {
+        this.doDel(args.get(0));
+        break;
+      }
       case DEF: {
         // Don't need to do anything when defining function
         break;
@@ -246,6 +254,15 @@ public class ExecuteOpcodeService {
     this.doMov(getRegisterByCode(registerCode1).getStack().peek(), registerCode2);
   }
 
+  private void doCut(String registerCode1, String registerCode2) {
+    this.doMov(getRegisterByCode(registerCode1).getStack().pop(), registerCode2);
+  }
+
+  private void doDel(String registerCode1) {
+    final Registers register = getRegisterByCode(registerCode1);
+    register.getStack().pop();
+  }
+
   private void doRet(Stack<JumpPoint> returnPointStack, Function<JumpPoint, Void> jumpFunction) {
     final JumpPoint returnPoint = returnPointStack.pop();
     jumpFunction.apply(returnPoint);
@@ -297,6 +314,10 @@ public class ExecuteOpcodeService {
   private boolean executeComparison(String jumpPointHex, Map<String, JumpPoint> jumpMap, Function<JumpPoint, Void> jumpFunction, String registerCode1, String registerCode2, BiFunction<Integer, Integer, Boolean> comparison) {
     final Registers register1 = getRegisterByCode(registerCode1);
     final Registers register2 = getRegisterByCode(registerCode2);
+
+    if (register1.getStack().isEmpty() || register2.getStack().isEmpty()) {
+      return false;
+    }
 
     final String regVal1 = register1.getStack().peek();
     final String regVal2 = register2.getStack().peek();

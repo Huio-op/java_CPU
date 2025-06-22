@@ -19,6 +19,8 @@ public enum Opcodes {
   JEQ("0x0E", 3),
   JMP("0x0F", 1),
   CPY("0x10", 2),
+  CUT("0x16", 2),
+  DEL("0x17", 1),
   DEF("0x11", 1),
   RET("0x12", 0),
   INP_C("0x13", 1),
