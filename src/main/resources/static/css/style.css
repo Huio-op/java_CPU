@@ -173,3 +173,138 @@ table td {
 .bold {
     font-weight: bold;
 }
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 50px auto;
+    padding: 0;
+    border: 1px solid #ccc;
+    width: 95%;
+    max-width: 1200px;
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.modal-header {
+    background-color: #f8f9fa;
+    padding: 15px 20px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    color: #333;
+}
+
+.close {
+    color: #666;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.section {
+    margin-bottom: 30px;
+}
+
+.section h3 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #007bff;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border: 1px solid #ddd;
+    vertical-align: top;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    color: #333;
+}
+
+tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.opcode-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    background-color: #e9ecef;
+}
+
+.hex-cell {
+    font-family: 'Courier New', monospace;
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.params-cell {
+    font-size: 13px;
+    white-space: pre-line;
+}
+
+.prefix-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    background-color: #e9ecef;
+}
+
+.example-cell {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #28a745;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 20px auto;
+        width: 98%;
+    }
+
+    table {
+        font-size: 12px;
+    }
+
+    th, td {
+        padding: 6px 8px;
+    }
+}

@@ -25,6 +25,9 @@
                               placeholder="Digite seu código aqui..."></textarea>
                     <div class="btn-container">
                         <button class="btn btn-primary" onclick="compileCode()">Compilar</button>
+                        <button class="btn btn-primary" onclick="openModal()">
+                            Info
+                        </button>
                     </div>
                 </div>
             </div>
@@ -89,6 +92,49 @@
                             <!-- Valores serão preenchidos pelo JavaScript -->
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Informações de Assembly</h2>
+                <button class="close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="section">
+                    <h3>Tabela de Opcodes</h3>
+                    <table id="opcodesTable">
+                        <thead>
+                        <tr>
+                            <th>OPCODE</th>
+                            <th>DESCRIÇÃO</th>
+                            <th>HEXADECIMAL</th>
+                            <th>PARÂMETROS</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <!-- Tabela será preenchida via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="section">
+                    <h3>Prefixos e Sintaxe</h3>
+                    <table id="prefixesTable">
+                        <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Definição</th>
+                            <th>Exemplo</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <!-- Tabela será preenchida via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
