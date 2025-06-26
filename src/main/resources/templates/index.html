@@ -136,6 +136,226 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div class="section">
+                    <h3>Exemplos de Código</h3>
+                    <div class="example">
+                        <h3>1) Solicitar um número e imprimir na tela</h3>
+                        <div class="code">INP RA
+                            OUT RA
+                            HALT</div>
+                    </div>
+
+                    <div class="example">
+                        <h3>2) Solicitar um número e imprimir o dobro na tela</h3>
+                        <div class="code">INP RA
+                            MOV 2 RB
+                            MUL RA RB
+                            OUT RA
+                            HALT</div>
+                    </div>
+
+                    <div class="example">
+                        <h3>3) Solicitar três números e imprimir o maior na tela</h3>
+                        <div class="code">INP RA
+                            INP RB
+                            INP RC
+                            JGT RA RB comp_a_c
+                            JLT RB RC out_c
+                            OUT RB
+                            HALT
+
+                            DEF comp_a_c
+                            JGT RA RC out_a
+                            JMP out_c
+                            HALT
+
+                            DEF out_a
+                            OUT RA
+                            HALT
+
+                            DEF out_c
+                            OUT RC
+                            HALT</div>
+                    </div>
+
+                    <div class="example">
+                        <h3>4) Solicitar dez números e imprimir o maior na tela</h3>
+                        <div class="code">MOV 10 RC
+                            MOV 0 RD
+                            JMP ask_10_numbers
+                            CUT RA RB
+                            JNN RA comp_a_to_b
+                            OUT RB
+                            HALT
+
+                            DEF ask_10_numbers
+                            JGT RC RD ask_number
+                            DEL RD
+                            MOV 1 RD
+                            SUB RC RD
+                            MOV 0 RD
+                            JGT RC RD ask_10_numbers
+                            RET
+
+                            DEF ask_number
+                            INP RA
+                            RET
+
+                            DEF comp_a_to_b
+                            JGT RA RB mov_a_to_b
+                            JLT RA RB del_a
+                            JNN RA comp_a_to_b
+                            RET
+
+                            DEF mov_a_to_b
+                            CUT RA RB
+                            RET
+
+                            DEF del_a
+                            DEL RA
+                            RET</div>
+                    </div>
+
+                    <div class="example">
+                        <h3>5) Solicitar números até o usuário digitar 0, imprimir em ordem crescente (bubble sort)</h3>
+                        <div class="code">MOV 0 RD
+                            JMP ask_numbers
+                            DEL RD
+                            DEL RA
+                            JMP bubble_sort
+                            JMP output_all
+                            HALT
+
+                            DEF ask_numbers
+                            JMP ask_number
+                            JGT RA RD ask_numbers
+                            RET
+                            DEF ask_number
+                            INP RA
+                            RET
+
+                            DEF bubble_sort
+                            CUT RA RB
+                            JNN RA get_biggest_number
+                            CUT RB RD
+                            JNN RB cut_b_to_a
+                            JNN RC cut_c_to_a
+                            JNN RA bubble_sort
+                            RET
+
+                            DEF get_biggest_number
+                            JLT RA RB cut_a_to_c
+                            JGT RA RB cut_a_to_b
+                            JNN RA get_biggest_number
+                            RET
+
+                            DEF cut_a_to_b
+                            CUT RA RB
+                            JGT RA RB cut_a_to_b
+                            JLT RA RB cut_a_to_c
+                            RET
+
+                            DEF cut_b_to_a
+                            CUT RB RA
+                            JNN RB cut_b_to_a
+                            RET
+
+                            DEF cut_a_to_c
+                            CUT RA RC
+                            RET
+
+                            DEF cut_c_to_a
+                            CUT RC RA
+                            JNN RC cut_c_to_a
+                            RET
+
+                            DEF output_all
+                            OUT RD
+                            JNN RD output_all
+                            RET
+                        </div>
+                    </div>
+
+                    <div class="example">
+                        <h3>6) Solicitar um número e imprimir o seu fatorial</h3>
+                        <div class="code">INP RA
+                            MOV 0 RD
+                            MOV 0 RB
+                            JEQ RA RB special_case
+                            MOV 1 RB
+                            JEQ RA RB special_case
+                            DEL RB
+                            CPY RA RC
+                            CPY RA RB
+                            MOV 1 RD
+                            JMP calculate
+                            HALT
+
+                            DEF calculate
+                            JGT RC RD loop
+                            ADD RA RB
+                            OUT RA
+                            HALT
+
+                            DEF loop
+                            SUB RC RD
+                            CPY RC RD
+                            MUL RA RC
+                            CUT RD RC
+                            MOV 1 RD
+                            JGT RC RD loop
+                            RET
+
+                            DEF finish
+                            OUT RD
+                            HALT
+
+                            DEF special_case
+                            MOV 1 RA
+                            OUT RA
+                            HALT</div>
+                    </div>
+
+                    <div class="example">
+                        <h3>7) Solicitar um nome e imprimir ao contrário</h3>
+                        <p><strong>Colar no input:</strong> dlrow olleh</p>
+                        <div class="code">MOV 11 RD
+                            MOV 0 RC
+                            INP_C RA
+                            JMP invert
+                            MOV 11 RD
+                            JMP print
+                            HALT
+
+                            DEF invert
+                            JGT RD RC mov_to_b
+                            DEL RC
+                            MOV 1 RC
+                            SUB RD RC
+                            MOV 0 RC
+                            JGT RD RC invert
+                            RET
+
+                            DEF print
+                            JGT RD RC printar
+                            DEL RC
+                            MOV 1 RC
+                            SUB RD RC
+                            MOV 0 RC
+                            JGT RD RC print
+                            RET
+
+                            DEF mov_to_b
+                            CUT RA RB
+                            RET
+
+                            DEF printar
+                            OUT_C RB
+                            RET
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
