@@ -1,4 +1,3 @@
-
 function compileCode() {
 
     const sourceCodeInput = $('#sourceCodeInput')[0];
@@ -50,18 +49,7 @@ $(document).ready(() => {
         context: document.body,
         contentType: 'application/json',
         success: (data, status) => {
-            $('#outputField').val(data.data);
-            applyMemoryState(data.memoryState);
-            // Atualiza os registradores com os dados recebidos
-            if (data.registers) {
-                updateRegistersFromBackend(data.registers);
-            }
-
-            if (data.compiledCode) {
-                $('#compiledCodeOutput')
-                    .val(data.compiledCode)
-                    .trigger('change');
-            }
+            setCurrentState(data);
         },
         error: (error, type) => {
             console.error("error:", error);
@@ -216,6 +204,22 @@ function resolveResponse(data, status) {
     }
 }
 
+function clearContext() {
+    $.ajax({
+        type: 'get',
+        url: 'api/processor/clear',
+        context: document.body,
+        contentType: 'application/json',
+        success: (data, status) => {
+            this.setCurrentState(data);
+        },
+        error: (error, type) => {
+            console.error("error:", error);
+            alert(`Error: ${error.responseJSON?.message ?? type}`);
+        }
+    });
+}
+
 const opcodesData = [
     ["NOOP", "PARA A EXECUÇÃO POR 1 MS", "0x00", "NENHUM"],
     ["MOV", "COLOCA UM VALOR EM UM REGISTRADOR", "0x01", "1- VALOR NUMÉRICO\n2- REGISTRADOR"],
@@ -281,6 +285,25 @@ function populatePrefixesTable() {
     });
 }
 
+function setCurrentState(data) {
+    $('#outputField').val(data.data);
+    applyMemoryState(data.memoryState);
+    // Atualiza os registradores com os dados recebidos
+    if (data.registers) {
+        updateRegistersFromBackend(data.registers);
+    }
+
+    if (data.compiledCode) {
+        $('#compiledCodeOutput')
+            .val(data.compiledCode)
+            .trigger('change');
+    } else {
+        $('#compiledCodeOutput')
+            .val("")
+            .trigger('change');
+    }
+}
+
 function openModal() {
     document.getElementById('infoModal').style.display = 'block';
 }
@@ -289,20 +312,20 @@ function closeModal() {
     document.getElementById('infoModal').style.display = 'none';
 }
 
-window.onclick = function(event) {
+window.onclick = function (event) {
     const modal = document.getElementById('infoModal');
     if (event.target === modal) {
         closeModal();
     }
 }
 
-document.addEventListener('keydown', function(event) {
+document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
         closeModal();
     }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     populateOpcodesTable();
     populatePrefixesTable();
 });

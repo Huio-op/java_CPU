@@ -41,7 +41,7 @@ public class ProcessorResource {
   public ProcessResponse compileCode(@RequestBody ProcessReq request) {
     // Clear jump map
     this.jumpMap.clear();
-    this.clearExecutionContext(false);
+    this.clearExecutionContext(false, true);
 
     final String[] commandsByLine = request.sourceCode().split("\n");
 
@@ -200,7 +200,7 @@ public class ProcessorResource {
   public ExecuteResponse executeCode(@RequestBody ExecuteReq req, boolean continueExecutionContext) throws InterruptedException {
 
     if ((!continueExecutionContext && !req.step()) || (this.currentFlag != null && this.currentFlag.equals(Flags.ENDED))) {
-      this.clearExecutionContext(true);
+      this.clearExecutionContext(true, false);
     }
 
     final String compiledCode = req.step() ? buildCompiledCode(true) : this.compiledCode;
@@ -286,6 +286,13 @@ public class ProcessorResource {
       this.compiledCode, this.executionMemY.get(), this.executionMemX.get(), this.currentFlag);
   }
 
+  @GetMapping("/clear")
+  public ExecuteResponse clearState() {
+    this.clearExecutionContext(false, true);
+    return new ExecuteResponse(null, memory, getRegistersMap(),
+      this.compiledCode, this.executionMemY.get(), this.executionMemX.get(), this.currentFlag);
+  }
+
   @PostMapping("/input")
   public ExecuteResponse processInput(@RequestBody ExecuteReq request) throws InterruptedException {
     return this.executeCode(request, true);
@@ -341,12 +348,15 @@ public class ProcessorResource {
     return list;
   }
 
-  private void clearExecutionContext(boolean onlyRam) {
+  private void clearExecutionContext(boolean onlyRam, boolean clearCompiledCode) {
     executionMemY.set(0);
     executionMemX.set(0);
     clearRegisterStacks();
     executionResponse = new StringBuilder();
     clearMemory(onlyRam);
+    if (clearCompiledCode) {
+      this.compiledCode = null;
+    }
   }
 
   private Map<String, List<String>> getRegistersMap() {
